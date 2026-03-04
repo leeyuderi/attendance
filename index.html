@@ -1,0 +1,2550 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>學生點名系統</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft JhengHei', '微軟正黑體', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .search-panel {
+            background: linear-gradient(135deg, #f0f4ff 0%, #e7f0ff 100%);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border: 2px solid #667eea;
+        }
+
+        .search-controls {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .search-results {
+            margin-top: 15px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            border: 2px solid #ddd;
+        }
+
+        .search-result-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 15px;
+            margin-bottom: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s;
+        }
+
+        .search-result-item:hover {
+            border-color: #667eea;
+            transform: translateX(5px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+        }
+
+        .search-result-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .search-result-info {
+            flex: 1;
+        }
+
+        .search-result-name {
+            font-weight: bold;
+            font-size: 1.1em;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .search-result-details {
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .search-result-status {
+            margin-left: 15px;
+            padding: 5px 12px;
+            border-radius: 6px;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+
+        .search-result-status.present {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .search-result-status.absent {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .search-result-status.none {
+            background: #e2e3e5;
+            color: #383d41;
+        }
+
+        .search-result-actions {
+            display: flex;
+            gap: 10px;
+            margin-left: 15px;
+        }
+
+        .control-panel {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            align-items: center;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 12px;
+        }
+
+        .control-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .control-group label {
+            font-weight: bold;
+            color: #333;
+            white-space: nowrap;
+        }
+
+        input[type="date"],
+        input[type="text"],
+        input[type="number"],
+        select,
+        button {
+            padding: 10px 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+
+        input[type="number"] {
+            width: 80px;
+        }
+
+        input[type="date"]:focus,
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            transition: transform 0.2s, box-shadow 0.2s;
+            white-space: nowrap;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+        
+        /* 新增：警告色按鈕 (用於清除狀態) */
+        .btn-warning {
+            background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+            color: white;
+        }
+
+        .stats {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .section-title {
+            font-size: 1.8em;
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+        }
+
+        .seat-config {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 2px solid #ffc107;
+        }
+
+        .seat-config h3 {
+            margin-bottom: 10px;
+            color: #856404;
+        }
+
+        .seat-grid-container {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 12px;
+            margin-top: 20px;
+            overflow: auto;
+            position: relative;
+            transform-origin: top center;
+            transition: transform 0.3s ease;
+        }
+
+        .zoom-controls {
+            position: sticky;
+            top: 10px;
+            right: 10px;
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            z-index: 100;
+            margin-bottom: 10px;
+        }
+
+        .zoom-controls label {
+            font-weight: bold;
+            color: #333;
+            white-space: nowrap;
+        }
+
+        .zoom-slider {
+            width: 150px;
+            cursor: pointer;
+        }
+
+        .zoom-value {
+            min-width: 50px;
+            text-align: center;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .zoom-btn {
+            padding: 5px 12px;
+            font-size: 14px;
+            min-width: auto;
+        }
+
+        .seat-grid {
+            display: inline-grid;
+            gap: 10px;
+            margin: 0 auto;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .seat-cell {
+            width: 120px;
+            height: 100px;
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f8f9fa;
+            position: relative;
+            transition: all 0.3s;
+            min-height: 100px;
+        }
+
+        .seat-cell.dragover {
+            border-color: #667eea;
+            background: #e7f0ff;
+            transform: scale(1.05);
+            border-style: solid;
+            border-width: 3px;
+        }
+
+        .seat-cell.has-student {
+            border: 2px solid #667eea;
+            background: white;
+        }
+
+        .student-seat-card {
+            width: 100%;
+            height: 100%;
+            background: white;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            padding: 8px;
+            cursor: move;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .delete-student-btn {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            width: 20px;
+            height: 20px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            z-index: 20;
+            line-height: 1;
+            padding: 0;
+        }
+
+        .delete-student-btn:hover {
+            background: #c82333;
+            transform: scale(1.2);
+        }
+
+        .student-seat-card:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+            z-index: 10;
+        }
+
+        .student-seat-card.dragging {
+            opacity: 0.5;
+        }
+
+        .student-seat-card.present {
+            border-color: #28a745;
+            background: #d4edda;
+        }
+
+        .student-seat-card.absent {
+            border-color: #dc3545;
+            background: #f8d7da;
+        }
+
+        .seat-number {
+            font-size: 0.7em;
+            color: #999;
+            margin-bottom: 2px;
+        }
+
+        .seat-name {
+            font-weight: bold;
+            font-size: 0.9em;
+            color: #333;
+            margin-bottom: 4px;
+        }
+
+        .seat-status {
+            font-size: 0.75em;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-top: 2px;
+        }
+
+        .seat-status.present {
+            background: #28a745;
+            color: white;
+        }
+
+        .seat-status.absent {
+            background: #dc3545;
+            color: white;
+        }
+
+        .unassigned-students {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 12px;
+        }
+
+        .unassigned-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+            min-height: 60px;
+            padding: 10px;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+
+        .unassigned-list.dragover {
+            background: #e7f0ff;
+            border: 2px dashed #667eea;
+        }
+
+        .unassigned-card {
+            padding: 12px 18px;
+            background: white;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            cursor: move;
+            transition: all 0.3s;
+            user-select: none;
+            font-weight: 500;
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .unassigned-card:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+        }
+
+        .unassigned-card.dragging {
+            opacity: 0.5;
+            transform: scale(0.95);
+        }
+
+        .unassigned-delete-btn {
+            width: 24px;
+            height: 24px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            flex-shrink: 0;
+            line-height: 1;
+            padding: 0;
+        }
+
+        .unassigned-delete-btn:hover {
+            background: #c82333;
+            transform: scale(1.1);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s;
+        }
+
+        #studentRecordModal {
+            z-index: 2000; /* 確保在請假名單模態框之上 */
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            animation: slideUp 0.3s;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(30px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-content h3 {
+            margin-bottom: 20px;
+            color: #333;
+            text-align: center;
+            font-size: 1.5em;
+        }
+
+        .attendance-options {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .attendance-option-btn {
+            padding: 30px 20px;
+            border: 3px solid #ddd;
+            border-radius: 12px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .attendance-option-btn:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .attendance-option-btn.present-option:hover {
+            border-color: #28a745;
+            background: #d4edda;
+        }
+
+        .attendance-option-btn.absent-option:hover {
+            border-color: #dc3545;
+            background: #f8d7da;
+        }
+
+        .option-icon {
+            font-size: 3em;
+            font-weight: bold;
+        }
+
+        .present-option .option-icon {
+            color: #28a745;
+        }
+
+        .absent-option .option-icon {
+            color: #dc3545;
+        }
+
+        .option-label {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .leave-type-buttons {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .leave-type-btn {
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 16px;
+            color: #333;
+        }
+
+        .leave-type-btn:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+            transform: translateY(-2px);
+        }
+
+        .leave-type-btn.selected {
+            border-color: #667eea;
+            background: #667eea;
+            color: white;
+            transform: scale(1.05);
+        }
+
+        .other-leave-input {
+            margin-top: 15px;
+            display: none;
+        }
+
+        #currentStatusInfo {
+            font-size: 1em;
+            color: #333;
+        }
+
+        #clearRecordBtn button {
+            padding: 12px;
+            font-size: 16px;
+        }
+
+        .period-buttons {
+            margin-top: 10px;
+        }
+
+        .period-btn {
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .period-btn:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+            transform: translateY(-2px);
+            color: #333;
+        }
+
+        .period-btn.selected {
+            border-color: #667eea;
+            background: #667eea;
+            color: white !important;
+            transform: scale(1.05);
+        }
+
+        .other-leave-input.show {
+            display: block;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            justify-content: flex-end;
+        }
+
+        .modal-actions button {
+            min-width: 100px;
+        }
+
+        .empty-seat {
+            color: #999;
+            font-size: 0.8em;
+        }
+
+        @media (max-width: 768px) {
+            .control-panel {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .control-group {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .seat-cell {
+                width: 100px;
+                height: 80px;
+            }
+        }
+    </style>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📋 學生點名系統</h1>
+            <p>輕鬆管理學生出勤與請假記錄</p>
+        </div>
+
+        <div class="content">
+            <div class="search-panel">
+                <h3 style="margin-bottom: 15px; color: #333;">🔍 快速搜尋與請假</h3>
+                <div class="search-controls">
+                    <div class="control-group">
+                        <label for="searchDate">搜尋日期：</label>
+                        <input type="date" id="searchDate">
+                    </div>
+                    <div class="control-group">
+                        <label for="searchInput">搜尋學生（姓名或座號）：</label>
+                        <input type="text" id="searchInput" placeholder="輸入姓名或座號">
+                    </div>
+                    <button id="searchBtn" onclick="searchStudents()" class="btn-success">🔍 搜尋</button>
+                    <button id="clearSearchBtn" onclick="clearSearch()" class="btn-danger">清除</button>
+                </div>
+                <div id="searchResults" class="search-results" style="display: none;"></div>
+            </div>
+
+            <div class="control-panel">
+                <div class="control-group">
+                    <label for="studentName">姓名：</label>
+                    <input type="text" id="studentName" placeholder="學生姓名">
+                </div>
+                <div class="control-group">
+                    <label for="studentNumber">座號：</label>
+                    <input type="number" id="studentNumber" placeholder="座號" min="1">
+                </div>
+                <button onclick="addStudent()" class="btn-success">➕ 新增學生</button>
+                
+                <div class="control-group">
+                    <label for="selectedDate">日期：</label>
+                    <input type="date" id="selectedDate">
+                </div>
+
+                <div class="control-group">
+                    <label for="rows">行數：</label>
+                    <input type="number" id="rows" placeholder="行" min="1" max="20" value="6">
+                </div>
+                <div class="control-group">
+                    <label for="cols">列數：</label>
+                    <input type="number" id="cols" placeholder="列" min="1" max="20" value="6">
+                </div>
+                <button onclick="setupSeats()">🪑 設定座位</button>
+                </div>
+
+            <div class="stats" id="stats">
+                <div class="stat-item">
+                    <div class="stat-value" id="totalStudents">0</div>
+                    <div class="stat-label">總學生數</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="presentCount">0</div>
+                    <div class="stat-label">今日出席</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="absentCount">0</div>
+                    <div class="stat-label">今日請假</div>
+                </div>
+            </div>
+
+            <div class="seat-config" id="seatConfig" style="display: none;">
+                <h3>🪑 座位配置</h3>
+                <div id="topStudentsDisplay" style="margin-bottom: 15px; padding: 15px; background: #fff3cd; border-radius: 8px; border: 2px solid #ffc107; display: none;">
+                    <strong style="color: #856404;">⚠️ 格數最多前12名：</strong>
+                    <span id="topStudentsList" style="color: #856404; margin-left: 10px;"></span>
+                </div>
+                <div class="zoom-controls">
+                    <label>縮放：</label>
+                    <input type="range" id="zoomSlider" class="zoom-slider" min="30" max="150" value="100" step="5">
+                    <span class="zoom-value" id="zoomValue">100%</span>
+                    <button class="zoom-btn" onclick="resetZoom()">重置</button>
+                    <button class="zoom-btn" onclick="fitToScreen()">適應螢幕</button>
+
+                    <div style="margin-left:auto; display:flex; gap:10px;">
+                        <button class="zoom-btn btn-danger" onclick="shuffleSeats()">🔀 換座位</button>
+                        <button class="zoom-btn" onclick="undoShuffle()">↩️ 復原</button>
+                    </div>
+                </div>
+                <div class="seat-grid-container" id="seatGridContainer">
+                    <div class="seat-grid" id="seatGrid"></div>
+                </div>
+            </div>
+
+            <div class="unassigned-students" id="unassignedStudents" style="display: none;">
+                <h3 class="section-title">未分配座位</h3>
+                <div class="unassigned-list" id="unassignedList"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="attendanceModal">
+        <div class="modal-content">
+            <h3 id="attendanceModalTitle">選擇出勤狀態</h3>
+            <div id="currentStatusInfo" style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 8px; text-align: center; display: none;"></div>
+            <div class="attendance-options">
+                <button class="attendance-option-btn present-option" onclick="selectAttendance('present')">
+                    <div class="option-icon">✓</div>
+                    <div class="option-label">出席</div>
+                </button>
+                <button class="attendance-option-btn absent-option" onclick="selectAttendance('absent')">
+                    <div class="option-icon">✗</div>
+                    <div class="option-label">請假</div>
+                </button>
+            </div>
+            
+            <div id="clearRecordBtn" style="margin-top: 15px; display: none;">
+                <button onclick="clearAttendanceRecord()" class="btn-warning" style="width: 100%;">🗑️ 清除此記錄 (回復為未點名狀態)</button>
+            </div>
+            
+            <div class="modal-actions">
+                <button onclick="closeAttendanceModal()" class="btn-danger" style="width: 100%;">取消 (關閉視窗)</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="leaveTypeModal">
+        <div class="modal-content">
+            <h3>選擇假別</h3>
+            <div class="leave-type-buttons">
+                <button class="leave-type-btn" onclick="selectLeaveType('sick')">病假</button>
+                <button class="leave-type-btn" onclick="selectLeaveType('personal')">事假</button>
+                <button class="leave-type-btn" onclick="selectLeaveType('family')">家庭因素假</button>
+                <button class="leave-type-btn" onclick="selectLeaveType('other')">其他</button>
+            </div>
+            <div class="other-leave-input" id="otherLeaveInput">
+                <label>請輸入假別說明：</label>
+                <input type="text" id="otherLeaveText" placeholder="輸入假別說明" style="width: 100%; margin-top: 5px;">
+            </div>
+            <div class="period-selection" style="margin-top: 20px;">
+                <label style="display: block; margin-bottom: 10px; font-weight: bold;">選擇請假節次（可多選）：</label>
+                <div style="margin-bottom: 10px;">
+                    <button id="allDayBtn" class="period-btn all-day-btn" onclick="selectAllDay()" style="width: 100%; padding: 12px; font-weight: bold; background: #fff3cd; border-color: #ffc107; color: #856404;">
+                        全天請假
+                    </button>
+                </div>
+                <div class="period-buttons" id="periodButtons" style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px;">
+                    </div>
+                <div style="margin-top: 10px; font-size: 0.9em; color: #666;">
+                    已選擇：<span id="selectedPeriodsText">無</span>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button onclick="confirmLeaveType()" class="btn-success">確認</button>
+                <button onclick="cancelLeaveType()" class="btn-danger">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="studentRecordModal">
+        <div class="modal-content" style="max-width: 700px;">
+            <h3 id="studentRecordTitle">學生出缺席記錄</h3>
+            <div id="studentRecordContent" style="max-height: 500px; overflow-y: auto;">
+                </div>
+            <div class="modal-actions">
+                <button onclick="closeStudentRecord()" class="btn-danger" style="width: 100%;">關閉</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="absentListModal">
+        <div class="modal-content" style="max-width: 600px;">
+            <h3 id="absentListTitle">請假名單</h3>
+            <div id="absentListContent" style="max-height: 400px; overflow-y: auto;">
+                </div>
+            <div class="modal-actions">
+                <button onclick="closeAbsentList()" class="btn-danger" style="width: 100%;">關閉</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+
+/* ===== Google Sheets 格數設定（修正新增） ===== */
+const GOOGLE_SHEETS_URL =
+  'https://docs.google.com/spreadsheets/d/15YcjLSBNfVfXksPPXoCmIWFyYo3fk7aMGkp9GugoJQA/export?format=csv';
+
+let studentPoints = {}; // 座號 -> 累計格數
+let previousSeatSnapshot = null; // 換座位前的備份
+
+        // ========== Firebase 設定區 ==========
+        // 請將以下設定替換為您的 Firebase 設定
+        // 詳細說明請參考 FIREBASE_SETUP.md
+        let USE_FIREBASE = true; // 設為 true 啟用 Firebase，false 則使用 localStorage
+        
+        let db = null;
+        if (USE_FIREBASE) {
+            const firebaseConfig = {
+                // TODO: 請替換為您的 Firebase 設定
+                apiKey: "AIzaSyBfgQhkccwSBqPcfOYp8QUR7RuvG9unKIc",
+                authDomain: "attendancesystem-yuderlee.firebaseapp.com",
+                projectId: "attendancesystem-yuderlee",
+                storageBucket: "attendancesystem-yuderlee.firebasestorage.app",
+                messagingSenderId: "894483934672",
+                appId: "1:894483934672:web:8b682215c90545e87f5dd5",
+                measurementId: "G-NPEVXTF5V9"
+
+            };
+            
+            try {
+                firebase.initializeApp(firebaseConfig);
+                db = firebase.firestore();
+                console.log('Firebase 初始化成功');
+            } catch (error) {
+                console.error('Firebase 初始化失敗:', error);
+                USE_FIREBASE = false;
+            }
+        }
+        // ========== Firebase 設定區結束 ==========
+
+        // 初始化：設定今天為預設日期
+        const today = new Date();
+        document.getElementById('selectedDate').valueAsDate = today;
+        document.getElementById('searchDate').valueAsDate = today;
+
+        // 確保一載入就以今日日期刷新畫面
+        setTimeout(() => {
+            renderSeats();
+            updateStats();
+        }, 0);
+
+        // 從 localStorage 或 Firebase 載入數據
+        let students = [];
+        let attendance = {};
+        let seatLayout = { rows: 6, cols: 6, seats: {} };
+        let dataLoaded = false;
+        let draggingStudent = null;
+        let currentLeaveStudent = null;
+        let selectedLeaveType = null;
+        let otherLeaveText = '';
+        let selectedPeriods = []; // 選中的節次
+
+        // 假別選項
+        const leaveTypes = {
+            'sick': '病假',
+            'personal': '事假',
+            'family': '家庭因素假',
+            'other': '其他'
+        };
+
+        // 新增學生
+        function addStudent() {
+            const nameInput = document.getElementById('studentName');
+            const numberInput = document.getElementById('studentNumber');
+            const name = nameInput.value.trim();
+            const number = parseInt(numberInput.value);
+
+            if (!name) {
+                alert('請輸入學生姓名！');
+                return;
+            }
+
+            if (!number || number < 1) {
+                alert('請輸入有效的座號！');
+                return;
+            }
+
+            if (students.find(s => s.name === name)) {
+                alert('該學生已存在！');
+                return;
+            }
+
+            if (students.find(s => s.number === number)) {
+                alert('該座號已被使用！');
+                return;
+            }
+
+            students.push({
+                name: name,
+                number: number,
+                row: null,
+                col: null
+            });
+
+            saveStudents();
+            nameInput.value = '';
+            numberInput.value = '';
+            renderSeats();
+            updateStats();
+        }
+
+        // 刪除學生
+        function deleteStudent(studentName) {
+            if (!confirm(`確定要刪除學生「${studentName}」嗎？\n\n此操作將同時刪除該學生的所有出勤記錄。`)) {
+                return;
+            }
+
+            // 從學生列表中移除
+            students = students.filter(s => s.name !== studentName);
+
+            // 刪除該學生的所有出勤記錄
+            Object.keys(attendance).forEach(date => {
+                if (attendance[date][studentName]) {
+                    delete attendance[date][studentName];
+                }
+            });
+
+            saveStudents();
+            saveAttendance();
+            renderSeats();
+            updateStats();
+        }
+
+        // 設定座位
+        function setupSeats() {
+            const rows = parseInt(document.getElementById('rows').value) || 6;
+            const cols = parseInt(document.getElementById('cols').value) || 6;
+
+            if (rows < 1 || cols < 1 || rows > 20 || cols > 20) {
+                alert('行數和列數必須在 1-20 之間！');
+                return;
+            }
+
+            seatLayout.rows = rows;
+            seatLayout.cols = cols;
+            if (!seatLayout.seats) {
+                seatLayout.seats = {};
+            }
+
+            saveSeatLayout();
+            renderSeats();
+        }
+
+        // 打亂座位 (包含特殊防呆機制：41號必須跟2號或22號在旁邊)
+        function shuffleSeats() {
+            // 備份目前座位狀態
+            previousSeatSnapshot = students.map(s => ({ name: s.name, row: s.row, col: s.col }));
+            if (!seatLayout.rows || !seatLayout.cols) {
+                alert('請先設定座位配置！');
+                return;
+            }
+
+            if (!confirm('確定要打亂所有學生的座位嗎？\n\n此操作會隨機重新分配所有已分配座位的學生。')) {
+                return;
+            }
+
+            // 取得所有已分配座位的學生
+            const assignedStudents = students.filter(s => 
+                s.row !== null && s.row !== undefined && 
+                s.col !== null && s.col !== undefined &&
+                s.row >= 0 && s.row < seatLayout.rows &&
+                s.col >= 0 && s.col < seatLayout.cols
+            );
+
+            if (assignedStudents.length === 0) {
+                alert('目前沒有已分配座位的學生！');
+                return;
+            }
+
+            // 只取得「目前有學生的座位」，空位保持不動
+            const occupiedSeats = assignedStudents.map(s => ({
+                row: s.row,
+                col: s.col
+            }));
+
+            // 檢查是否需要啟動特殊條件 (找出是否有 41 號，且 2 或 22 號也在已分配的座位中)
+            const student41 = assignedStudents.find(s => s.number === 41);
+            const student2 = assignedStudents.find(s => s.number === 2);
+            const student22 = assignedStudents.find(s => s.number === 22);
+            const needsSpecialRule = student41 && (student2 || student22);
+
+            let bestConfiguration = null;
+            let conditionMet = false;
+
+            if (needsSpecialRule) {
+                // 如果需要滿足特殊條件，最多嘗試 100 次隨機打亂，以避免無限迴圈
+                for (let attempt = 0; attempt < 100; attempt++) {
+                    const shuffledSeats = [...occupiedSeats].sort(() => Math.random() - 0.5);
+                    
+                    let s41Pos = null, s2Pos = null, s22Pos = null;
+                    
+                    assignedStudents.forEach((student, index) => {
+                        if (student.number === 41) s41Pos = shuffledSeats[index];
+                        if (student.number === 2) s2Pos = shuffledSeats[index];
+                        if (student.number === 22) s22Pos = shuffledSeats[index];
+                    });
+
+                    // 檢查九宮格相鄰 (距離 <= 1)
+                    const isAdjacent = (pos1, pos2) => {
+                        if (!pos1 || !pos2) return false;
+                        return Math.abs(pos1.row - pos2.row) <= 1 && Math.abs(pos1.col - pos2.col) <= 1;
+                    };
+
+                    if (isAdjacent(s41Pos, s2Pos) || isAdjacent(s41Pos, s22Pos)) {
+                        bestConfiguration = shuffledSeats;
+                        conditionMet = true;
+                        break;
+                    }
+                    
+                    // 暫存最後一次嘗試結果
+                    bestConfiguration = shuffledSeats;
+                }
+
+                // 如果隨機 100 次都沒有碰到剛好相鄰的情況，則採取「強制換位」來保證規則成立
+                if (!conditionMet) {
+                    let s41Index = -1, s2Index = -1, s22Index = -1;
+                    
+                    assignedStudents.forEach((student, index) => {
+                        if (student.number === 41) s41Index = index;
+                        if (student.number === 2) s2Index = index;
+                        if (student.number === 22) s22Index = index;
+                    });
+
+                    const s41Pos = bestConfiguration[s41Index];
+                    
+                    // 找出 41 號旁邊「目前有坐人」的位置
+                    const adjacentIndices = [];
+                    bestConfiguration.forEach((seat, index) => {
+                        if (index !== s41Index && 
+                            Math.abs(seat.row - s41Pos.row) <= 1 && 
+                            Math.abs(seat.col - s41Pos.col) <= 1) {
+                            adjacentIndices.push(index);
+                        }
+                    });
+
+                    // 如果 41 號旁邊有位置，就把 2 或 22 號強行換過去
+                    if (adjacentIndices.length > 0) {
+                        const targetAdjacentIndex = adjacentIndices[Math.floor(Math.random() * adjacentIndices.length)];
+                        
+                        // 決定要換 2 號還是 22 號 (如果都在就隨機挑一個)
+                        let studentToMoveIndex = -1;
+                        if (s2Index !== -1 && s22Index !== -1) {
+                            studentToMoveIndex = Math.random() > 0.5 ? s2Index : s22Index;
+                        } else {
+                            studentToMoveIndex = s2Index !== -1 ? s2Index : s22Index;
+                        }
+
+                        // 進行座標交換
+                        const tempSeat = bestConfiguration[targetAdjacentIndex];
+                        bestConfiguration[targetAdjacentIndex] = bestConfiguration[studentToMoveIndex];
+                        bestConfiguration[studentToMoveIndex] = tempSeat;
+                    }
+                }
+            } else {
+                // 如果不需要啟動特殊條件，一般打亂即可
+                bestConfiguration = [...occupiedSeats].sort(() => Math.random() - 0.5);
+            }
+
+            // 重新分配
+            assignedStudents.forEach((student, index) => {
+                student.row = bestConfiguration[index].row;
+                student.col = bestConfiguration[index].col;
+            });
+
+            saveStudents();
+            renderSeats();
+        }
+
+        // 簡易 CSV 解析函數
+        function parseCSVLine(line) {
+            const result = [];
+            let current = '';
+            let inQuotes = false;
+            
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                if (char === '"') {
+                    inQuotes = !inQuotes;
+                } else if (char === ',' && !inQuotes) {
+                    result.push(current.trim());
+                    current = '';
+                } else {
+                    current += char;
+                }
+            }
+            result.push(current.trim());
+            return result;
+        }
+
+        // 從 Google Sheets 讀取格數資料
+        async function loadStudentPoints() {
+            try {
+                const response = await fetch(GOOGLE_SHEETS_URL + '&t=' + Date.now()); // 添加時間戳避免快取
+                if (!response.ok) {
+                    throw new Error('無法讀取 Google Sheets 資料');
+                }
+                
+                const csvText = await response.text();
+                const lines = csvText.split('\n').filter(line => line.trim());
+                
+                studentPoints = {};
+                
+                // 解析 CSV（跳過第46行，那是日期）
+                lines.forEach((line, index) => {
+                    if (index === 45) return; // 跳過第46行（索引45，因為是日期行）
+                    
+                    const columns = parseCSVLine(line);
+                    if (columns.length > 0) {
+                        // 第一欄（A欄）是總格數
+                        const totalPoints = parseFloat(columns[0]) || 0;
+                        const studentNumber = index + 1; // 第1行是1號，第2行是2號...
+                        if (!isNaN(totalPoints)) {
+                            studentPoints[studentNumber] = totalPoints;
+                        }
+                    }
+                });
+                
+                console.log('學生格數資料載入成功', studentPoints);
+                
+                // 更新座位顯示和排行榜
+                if (dataLoaded) {
+                    renderSeats();
+                    updateTopStudents();
+                }
+            } catch (error) {
+                console.error('載入學生格數失敗:', error);
+                // 如果載入失敗，不影響其他功能
+            }
+        }
+
+        // 更新前12名格數最多的學生
+        function updateTopStudents() {
+            const topStudentsDisplay = document.getElementById('topStudentsDisplay');
+            const topStudentsList = document.getElementById('topStudentsList');
+            
+            if (!topStudentsDisplay || !topStudentsList || Object.keys(studentPoints).length === 0) {
+                if (topStudentsDisplay) topStudentsDisplay.style.display = 'none';
+                return;
+            }
+
+            // 將格數資料轉換為陣列並排序
+            const pointsArray = Object.entries(studentPoints)
+                .map(([number, points]) => ({
+                    number: parseInt(number),
+                    points: points
+                }))
+                .filter(item => item.points > 0) // 只顯示格數大於0的
+                .sort((a, b) => b.points - a.points) // 由高到低排序
+                .slice(0, 12); // 取前12名
+
+            if (pointsArray.length === 0) {
+                topStudentsDisplay.style.display = 'none';
+                return;
+            }
+
+            // 顯示前12名
+            const topListText = pointsArray.map(item => `${item.number}號(${item.points})`).join('、');
+            topStudentsList.textContent = topListText;
+            topStudentsDisplay.style.display = 'block';
+        }
+
+        // 渲染座位
+        function renderSeats() {
+            studentPoints = studentPoints || {};
+            const seatGrid = document.getElementById('seatGrid');
+            const seatConfig = document.getElementById('seatConfig');
+            const unassignedStudents = document.getElementById('unassignedStudents');
+            const unassignedList = document.getElementById('unassignedList');
+
+            if (seatLayout.rows && seatLayout.cols) {
+                seatConfig.style.display = 'block';
+                seatGrid.style.gridTemplateColumns = `repeat(${seatLayout.cols}, 1fr)`;
+                seatGrid.innerHTML = '';
+
+                // 建立座位網格
+                for (let row = 0; row < seatLayout.rows; row++) {
+                    for (let col = 0; col < seatLayout.cols; col++) {
+                        const seatKey = `${row}-${col}`;
+                        const seatCell = document.createElement('div');
+                        seatCell.className = 'seat-cell';
+                        seatCell.dataset.row = row;
+                        seatCell.dataset.col = col;
+
+                        // 找到這個座位的學生
+                        const student = students.find(s => s.row === row && s.col === col);
+                        
+                        if (student) {
+                            seatCell.classList.add('has-student');
+                            const date = document.getElementById('selectedDate').value;
+                            const todayRecord = date && attendance[date] ? attendance[date][student.name] : null;
+                            const isPresent = todayRecord?.status === 'present';
+                            const isAbsent = todayRecord?.status === 'absent';
+                            let leaveInfo = '';
+                            if (isAbsent) {
+                                leaveInfo = todayRecord.leaveTypeLabel || '其他';
+                                if (todayRecord.periodsText) {
+                                    leaveInfo += ` (${todayRecord.periodsText})`;
+                                }
+                            }
+
+                            const card = document.createElement('div');
+                            card.className = `student-seat-card ${isPresent ? 'present' : ''} ${isAbsent ? 'absent' : ''}`;
+                            card.draggable = true;
+                            card.dataset.studentName = student.name;
+
+                            card.innerHTML = `
+                                <button class="delete-student-btn" onclick="event.stopPropagation(); deleteStudent('${student.name}')" title="刪除學生">×</button>
+                                <div class="seat-number">座號 ${student.number}</div>
+                                <div class="seat-name" style="cursor: pointer; text-decoration: underline;" onclick="event.stopPropagation(); showStudentRecord('${student.name}')" title="點擊查看出缺席記錄">${student.name}${studentPoints[student.number] !== undefined ? `(${studentPoints[student.number]})` : ''}</div>
+                                ${date ? `
+                                    ${isPresent ? '<div class="seat-status present">✓ 出席</div>' : ''}
+                                    ${isAbsent ? `<div class="seat-status absent">✗ ${leaveInfo}</div>` : ''}
+                                    ${!isPresent && !isAbsent ? '<div style="font-size: 0.7em; color: #999;">未記錄</div>' : ''}
+                                ` : ''}
+                            `;
+
+                            card.addEventListener('click', (e) => {
+                                // 如果點擊的是姓名或刪除按鈕，不觸發出勤選項
+                                if (e.target.classList.contains('seat-name') || e.target.classList.contains('delete-student-btn')) {
+                                    return;
+                                }
+                                if (date) {
+                                    showAttendanceOptions(student.name);
+                                }
+                            });
+
+                            card.addEventListener('dragstart', (e) => {
+                                draggingStudent = student.name;
+                                card.classList.add('dragging');
+                                e.dataTransfer.effectAllowed = 'move';
+                                e.dataTransfer.setData('text/plain', student.name);
+                            });
+
+                            card.addEventListener('dragend', () => {
+                                draggingStudent = null;
+                                card.classList.remove('dragging');
+                            });
+
+                            seatCell.appendChild(card);
+                        } else {
+                            seatCell.innerHTML = '<div class="empty-seat">空位</div>';
+                        }
+
+                        // 拖放事件
+                        seatCell.addEventListener('dragover', (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            seatCell.classList.add('dragover');
+                        });
+
+                        seatCell.addEventListener('dragleave', (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            seatCell.classList.remove('dragover');
+                        });
+
+                        seatCell.addEventListener('drop', (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            seatCell.classList.remove('dragover');
+                            
+                            // 從 dataTransfer 或全局變數獲取學生名稱
+                            const studentName = e.dataTransfer.getData('text/plain') || draggingStudent;
+                            
+                            if (studentName) {
+                                const student = students.find(s => s.name === studentName);
+                                if (student) {
+                                    const newRow = parseInt(seatCell.dataset.row);
+                                    const newCol = parseInt(seatCell.dataset.col);
+                                    
+                                    // 檢查新位置是否已有學生
+                                    const existingStudent = students.find(s => s.row === newRow && s.col === newCol && s.name !== student.name);
+                                    if (existingStudent) {
+                                        // 交換位置
+                                        const tempRow = student.row;
+                                        const tempCol = student.col;
+                                        student.row = newRow;
+                                        student.col = newCol;
+                                        existingStudent.row = tempRow;
+                                        existingStudent.col = tempCol;
+                                    } else {
+                                        student.row = newRow;
+                                        student.col = newCol;
+                                    }
+                                    
+                                    saveStudents();
+                                    renderSeats();
+                                }
+                            }
+                        });
+
+                        seatGrid.appendChild(seatCell);
+                    }
+                }
+            } else {
+                seatConfig.style.display = 'none';
+            }
+
+            // 顯示未分配座位的學生（所有沒有座位的學生）
+            // 如果沒有設定座位，所有學生都視為未分配
+            let unassigned = [];
+            if (!seatLayout.rows || !seatLayout.cols) {
+                // 沒有設定座位時，顯示所有學生
+                unassigned = [...students];
+            } else {
+                // 有設定座位時，只顯示沒有被分配到有效座位的學生
+                students.forEach(s => {
+                    let isAssigned = false;
+                    
+                    // 檢查是否有有效的座位分配
+                    if (s.row !== null && s.row !== undefined && 
+                        s.col !== null && s.col !== undefined) {
+                        // 檢查是否在有效範圍內
+                        if (s.row >= 0 && s.row < seatLayout.rows && 
+                            s.col >= 0 && s.col < seatLayout.cols) {
+                            isAssigned = true;
+                        }
+                    }
+                    
+                    // 如果沒有被分配，加入未分配列表
+                    if (!isAssigned) {
+                        unassigned.push(s);
+                    }
+                });
+            }
+            
+            // 顯示未分配區域（只要有學生存在就顯示，以便接收拖放）
+            if (students.length > 0) {
+                unassignedStudents.style.display = 'block';
+                unassignedList.innerHTML = ''; // 清空列表
+                
+                // 如果沒有未分配的學生，顯示提示文字
+                if (unassigned.length === 0) {
+                    const hint = document.createElement('div');
+                    hint.style.cssText = 'color: #999; font-style: italic; padding: 20px; text-align: center; width: 100%; pointer-events: none;';
+                    hint.textContent = '可將座位上的學生拖曳到此處移除座位分配';
+                    unassignedList.appendChild(hint);
+                }
+                
+                // 顯示未分配的學生
+                unassigned.forEach(student => {
+                    const card = document.createElement('div');
+                    card.className = 'unassigned-card';
+                    card.draggable = true;
+                    card.dataset.studentName = student.name;
+
+                    const nameSpan = document.createElement('span');
+                    nameSpan.textContent = `${student.name} (座號 ${student.number})`;
+                    
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'unassigned-delete-btn';
+                    deleteBtn.textContent = '×';
+                    deleteBtn.title = '刪除學生';
+                    deleteBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        deleteStudent(student.name);
+                    };
+
+                    card.appendChild(nameSpan);
+                    card.appendChild(deleteBtn);
+
+                    card.addEventListener('dragstart', (e) => {
+                        draggingStudent = student.name;
+                        card.classList.add('dragging');
+                        e.dataTransfer.effectAllowed = 'move';
+                        e.dataTransfer.setData('text/plain', student.name);
+                    });
+
+                    card.addEventListener('dragend', () => {
+                        draggingStudent = null;
+                        card.classList.remove('dragging');
+                    });
+
+                    unassignedList.appendChild(card);
+                });
+
+                // 為未分配區域添加拖放事件監聽器（允許將座位上的學生拖回）
+                unassignedList.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    unassignedList.classList.add('dragover');
+                });
+
+                unassignedList.addEventListener('dragleave', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    // 只有當離開整個未分配區域時才移除高亮
+                    if (!unassignedList.contains(e.relatedTarget)) {
+                        unassignedList.classList.remove('dragover');
+                    }
+                });
+
+                unassignedList.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    unassignedList.classList.remove('dragover');
+                    
+                    // 從 dataTransfer 或全局變數獲取學生名稱
+                    const studentName = e.dataTransfer.getData('text/plain') || draggingStudent;
+                    
+                    if (studentName) {
+                        const student = students.find(s => s.name === studentName);
+                        if (student) {
+                            // 清除學生的座位分配
+                            student.row = null;
+                            student.col = null;
+                            saveStudents();
+                            renderSeats();
+                        }
+                    }
+                });
+            } else {
+                unassignedStudents.style.display = 'none';
+            }
+        }
+
+        // 顯示出勤選項
+        function showAttendanceOptions(studentName) {
+            const date = document.getElementById('selectedDate').value;
+            if (!date) {
+                alert('請先選擇日期！');
+                return;
+            }
+
+            currentLeaveStudent = studentName;
+            document.getElementById('attendanceModalTitle').textContent = `選擇「${studentName}」的出勤狀態`;
+            
+            // 檢查當前是否有記錄
+            const statusInfo = document.getElementById('currentStatusInfo');
+            const clearBtn = document.getElementById('clearRecordBtn');
+            const todayRecord = attendance[date] ? attendance[date][studentName] : null;
+            
+            if (todayRecord) {
+                if (todayRecord.status === 'present') {
+                    statusInfo.innerHTML = '<strong>目前狀態：</strong><span style="color: #28a745; font-weight: bold;">✓ 出席</span>';
+                    statusInfo.style.display = 'block';
+                    clearBtn.style.display = 'block';
+                } else if (todayRecord.status === 'absent') {
+                    let leaveText = todayRecord.leaveTypeLabel || '其他';
+                    if (todayRecord.periodsText) {
+                        leaveText += ` (${todayRecord.periodsText})`;
+                    }
+                    statusInfo.innerHTML = `<strong>目前狀態：</strong><span style="color: #dc3545; font-weight: bold;">✗ 請假 - ${leaveText}</span>`;
+                    statusInfo.style.display = 'block';
+                    clearBtn.style.display = 'block';
+                }
+            } else {
+                statusInfo.style.display = 'none';
+                clearBtn.style.display = 'none';
+            }
+            
+            document.getElementById('attendanceModal').classList.add('show');
+        }
+
+        // 選擇出勤狀態
+        function selectAttendance(status) {
+            document.getElementById('attendanceModal').classList.remove('show');
+            
+            if (status === 'present') {
+                recordAttendance(currentLeaveStudent, 'present');
+            } else if (status === 'absent') {
+                showLeaveTypeModal(currentLeaveStudent);
+            }
+        }
+
+        // 關閉出勤選擇模態框
+        function closeAttendanceModal() {
+            document.getElementById('attendanceModal').classList.remove('show');
+            currentLeaveStudent = null;
+        }
+
+        // 清除出勤記錄 (修復版：支援取消狀態)
+        function clearAttendanceRecord() {
+            if (!confirm('確定要清除此學生的出勤記錄嗎？\n(這將使學生恢復為未點名狀態)')) {
+                return;
+            }
+
+            const date = document.getElementById('selectedDate').value;
+            if (date && attendance[date] && attendance[date][currentLeaveStudent]) {
+                delete attendance[date][currentLeaveStudent];
+                saveAttendance();
+                renderSeats();
+                updateStats();
+                
+                // 如果目前正在搜尋，也要更新搜尋結果
+                if (document.getElementById('searchResults').style.display === 'block') {
+                    searchStudents();
+                }
+                
+                closeAttendanceModal();
+            }
+        }
+
+        // 顯示假別選擇模態框
+        function showLeaveTypeModal(studentName) {
+            currentLeaveStudent = studentName;
+            selectedLeaveType = null;
+            otherLeaveText = '';
+            selectedPeriods = [];
+            document.getElementById('leaveTypeModal').classList.add('show');
+            document.getElementById('otherLeaveInput').classList.remove('show');
+            document.getElementById('otherLeaveText').value = '';
+            
+            // 重置按鈕狀態
+            document.querySelectorAll('.leave-type-btn').forEach(btn => {
+                btn.classList.remove('selected');
+            });
+
+            // 重置全天按鈕狀態
+            const allDayBtn = document.getElementById('allDayBtn');
+            if (allDayBtn) {
+                allDayBtn.classList.remove('selected');
+                allDayBtn.style.background = '#fff3cd';
+                allDayBtn.style.color = '#856404';
+            }
+
+            // 生成節次按鈕
+            const periodButtons = document.getElementById('periodButtons');
+            periodButtons.innerHTML = '';
+            for (let i = 1; i <= 11; i++) {
+                const btn = document.createElement('button');
+                btn.className = 'period-btn';
+                btn.textContent = `第${i}節`;
+                btn.dataset.period = i;
+                btn.onclick = () => togglePeriod(i);
+                periodButtons.appendChild(btn);
+            }
+            updateSelectedPeriodsText();
+        }
+
+        // 選擇全天
+        function selectAllDay() {
+            // 選擇所有節次（1-11）
+            selectedPeriods = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+            
+            // 更新所有節次按鈕狀態
+            document.querySelectorAll('.period-btn[data-period]').forEach(btn => {
+                btn.classList.add('selected');
+            });
+            
+            // 更新全天按鈕狀態
+            const allDayBtn = document.getElementById('allDayBtn');
+            if (allDayBtn) {
+                allDayBtn.classList.add('selected');
+                allDayBtn.style.background = '#ffc107';
+                allDayBtn.style.color = '#000';
+            }
+            
+            updateSelectedPeriodsText();
+        }
+
+        // 切換節次選擇
+        function togglePeriod(period) {
+            const index = selectedPeriods.indexOf(period);
+            if (index > -1) {
+                selectedPeriods.splice(index, 1);
+            } else {
+                selectedPeriods.push(period);
+            }
+            selectedPeriods.sort((a, b) => a - b);
+            
+            // 更新按鈕狀態
+            const btn = document.querySelector(`.period-btn[data-period="${period}"]`);
+            if (btn) {
+                btn.classList.toggle('selected');
+            }
+            
+            // 如果取消任何節次，取消全天狀態
+            const allDayBtn = document.getElementById('allDayBtn');
+            if (allDayBtn && selectedPeriods.length < 11) {
+                allDayBtn.classList.remove('selected');
+                allDayBtn.style.background = '#fff3cd';
+                allDayBtn.style.color = '#856404';
+            }
+            
+            // 如果選擇了所有節次，自動標記為全天
+            if (selectedPeriods.length === 11 && allDayBtn) {
+                allDayBtn.classList.add('selected');
+                allDayBtn.style.background = '#ffc107';
+                allDayBtn.style.color = '#000';
+            }
+            
+            updateSelectedPeriodsText();
+        }
+
+        // 更新已選擇節次文字
+        function updateSelectedPeriodsText() {
+            const textEl = document.getElementById('selectedPeriodsText');
+            if (selectedPeriods.length === 0) {
+                textEl.textContent = '無';
+            } else if (selectedPeriods.length === 11) {
+                textEl.textContent = '全天';
+            } else {
+                textEl.textContent = selectedPeriods.map(p => `第${p}節`).join('、');
+            }
+        }
+
+        // 選擇假別
+        function selectLeaveType(type) {
+            selectedLeaveType = type;
+            
+            // 更新按鈕狀態
+            document.querySelectorAll('.leave-type-btn').forEach(btn => {
+                btn.classList.remove('selected');
+            });
+            event.target.classList.add('selected');
+
+            // 如果是「其他」，顯示輸入框
+            if (type === 'other') {
+                document.getElementById('otherLeaveInput').classList.add('show');
+            } else {
+                document.getElementById('otherLeaveInput').classList.remove('show');
+                otherLeaveText = '';
+            }
+        }
+
+        // 確認假別
+        function confirmLeaveType() {
+            if (!selectedLeaveType) {
+                alert('請選擇假別！');
+                return;
+            }
+
+            if (selectedPeriods.length === 0) {
+                alert('請至少選擇一個節次！');
+                return;
+            }
+
+            if (selectedLeaveType === 'other') {
+                otherLeaveText = document.getElementById('otherLeaveText').value.trim();
+                if (!otherLeaveText) {
+                    alert('請輸入假別說明！');
+                    return;
+                }
+            }
+
+            recordAttendance(currentLeaveStudent, 'absent');
+            document.getElementById('leaveTypeModal').classList.remove('show');
+        }
+
+        // 取消假別選擇
+        function cancelLeaveType() {
+            document.getElementById('leaveTypeModal').classList.remove('show');
+            currentLeaveStudent = null;
+            selectedLeaveType = null;
+            otherLeaveText = '';
+            selectedPeriods = [];
+        }
+
+        // 記錄出勤狀態
+        function recordAttendance(studentName, status) {
+            const date = document.getElementById('selectedDate').value;
+            if (!date) {
+                alert('請先選擇日期！');
+                return;
+            }
+
+            if (!attendance[date]) {
+                attendance[date] = {};
+            }
+
+            if (status === 'present') {
+                attendance[date][studentName] = { status: 'present' };
+            } else if (status === 'absent') {
+                let leaveTypeLabel = leaveTypes[selectedLeaveType] || '其他';
+                if (selectedLeaveType === 'other' && otherLeaveText) {
+                    leaveTypeLabel = otherLeaveText;
+                }
+                
+                // 格式化節次顯示
+                let periodsText = '';
+                if (selectedPeriods.length === 11) {
+                    periodsText = '全天';
+                } else if (selectedPeriods.length > 0) {
+                    periodsText = selectedPeriods.map(p => `第${p}節`).join('、');
+                }
+                
+                attendance[date][studentName] = {
+                    status: 'absent',
+                    leaveType: selectedLeaveType || 'other',
+                    leaveTypeLabel: leaveTypeLabel,
+                    periods: [...selectedPeriods], // 保存節次陣列
+                    periodsText: periodsText, // 保存節次文字
+                    isAllDay: selectedPeriods.length === 11 // 標記是否全天
+                };
+            }
+
+            saveAttendance();
+            renderSeats();
+            updateStats();
+        }
+
+        // 更新統計資訊
+        function updateStats() {
+            const date = document.getElementById('selectedDate').value;
+            document.getElementById('totalStudents').textContent = students.length;
+
+            if (date && attendance[date]) {
+                const records = attendance[date];
+                const presentCount = Object.values(records).filter(r => r.status === 'present').length;
+                const absentCount = Object.values(records).filter(r => r.status === 'absent').length;
+                
+                document.getElementById('presentCount').textContent = presentCount;
+                
+                // 讓請假人數可點擊查看
+                const absentCountEl = document.getElementById('absentCount');
+                absentCountEl.textContent = absentCount;
+                if (absentCount > 0) {
+                    absentCountEl.style.cursor = 'pointer';
+                    absentCountEl.style.textDecoration = 'underline';
+                    absentCountEl.style.color = '#dc3545';
+                    absentCountEl.onclick = () => showAbsentList(date);
+                    absentCountEl.title = '點擊查看請假名單';
+                } else {
+                    absentCountEl.style.cursor = 'default';
+                    absentCountEl.style.textDecoration = 'none';
+                    absentCountEl.onclick = null;
+                    absentCountEl.title = '';
+                }
+            } else {
+                document.getElementById('presentCount').textContent = '0';
+                const absentCountEl = document.getElementById('absentCount');
+                absentCountEl.textContent = '0';
+                absentCountEl.style.cursor = 'default';
+                absentCountEl.style.textDecoration = 'none';
+                absentCountEl.onclick = null;
+                absentCountEl.title = '';
+            }
+        }
+
+        // 顯示請假名單
+        function showAbsentList(date) {
+            if (!date || !attendance[date]) {
+                alert('該日期沒有請假記錄');
+                return;
+            }
+
+            const records = attendance[date];
+            const absentStudents = Object.keys(records)
+                .filter(name => records[name].status === 'absent')
+                .map(name => {
+                    const student = students.find(s => s.name === name);
+                    const record = records[name];
+                    return { student, record };
+                })
+                .filter(item => item.student) // 過濾掉已刪除的學生
+                .sort((a, b) => a.student.number - b.student.number);
+
+            if (absentStudents.length === 0) {
+                alert('該日期沒有請假記錄');
+                return;
+            }
+
+            document.getElementById('absentListTitle').textContent = `${formatDate(date)} 請假名單`;
+            const content = document.getElementById('absentListContent');
+            content.innerHTML = absentStudents.map(({ student, record }) => {
+                let leaveInfo = record.leaveTypeLabel || '其他';
+                if (record.periodsText) {
+                    leaveInfo += ` (${record.periodsText})`;
+                }
+                // 轉義學生姓名中的單引號
+                const escapedName = student.name.replace(/'/g, "\\'");
+                return `
+                    <div class="search-result-item" style="cursor: pointer;" onclick="closeAbsentList(); setTimeout(() => showStudentRecord('${escapedName}'), 100);">
+                        <div class="search-result-info">
+                            <div class="search-result-name">${student.name}</div>
+                            <div class="search-result-details">座號：${student.number} | 假別：${leaveInfo}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('absentListModal').classList.add('show');
+        }
+
+        // 關閉請假名單
+        function closeAbsentList() {
+            document.getElementById('absentListModal').classList.remove('show');
+        }
+
+        // 顯示學生記錄
+        function showStudentRecord(studentName) {
+            const student = students.find(s => s.name === studentName);
+            if (!student) {
+                alert('找不到該學生');
+                return;
+            }
+
+            document.getElementById('studentRecordTitle').textContent = `${student.name} (座號 ${student.number}) 的出缺席記錄`;
+
+            // 收集所有記錄
+            const allRecords = [];
+            Object.keys(attendance).sort().reverse().forEach(date => {
+                const record = attendance[date][studentName];
+                if (record) {
+                    allRecords.push({ date, record });
+                }
+            });
+
+            const content = document.getElementById('studentRecordContent');
+            if (allRecords.length === 0) {
+                content.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;">尚無出缺席記錄</div>';
+            } else {
+                // 轉義學生姓名中的單引號
+                const escapedName = studentName.replace(/'/g, "\\'");
+                
+                content.innerHTML = allRecords.map(({ date, record }) => {
+                    if (record.status === 'present') {
+                        return `
+                            <div class="search-result-item" style="cursor: pointer;" onclick="editStudentRecord('${escapedName}', '${date}')" title="點擊修改此記錄">
+                                <div class="search-result-info">
+                                    <div class="search-result-name">${formatDateWithWeekday(date)}</div>
+                                    <div class="search-result-details">狀態：出席</div>
+                                </div>
+                                <div class="search-result-status present">✓ 出席</div>
+                            </div>
+                        `;
+                    } else if (record.status === 'absent') {
+                        let leaveInfo = record.leaveTypeLabel || '其他';
+                        if (record.periodsText) {
+                            leaveInfo += ` (${record.periodsText})`;
+                        }
+                        return `
+                            <div class="search-result-item" style="cursor: pointer;" onclick="editStudentRecord('${escapedName}', '${date}')" title="點擊修改此記錄">
+                                <div class="search-result-info">
+                                    <div class="search-result-name">${formatDateWithWeekday(date)}</div>
+                                    <div class="search-result-details">假別：${leaveInfo}</div>
+                                </div>
+                                <div class="search-result-status absent">✗ 請假</div>
+                            </div>
+                        `;
+                    }
+                    return '';
+                }).join('');
+            }
+
+            document.getElementById('studentRecordModal').classList.add('show');
+        }
+
+        // 關閉學生記錄
+        function closeStudentRecord() {
+            document.getElementById('studentRecordModal').classList.remove('show');
+        }
+
+        // 編輯學生記錄
+        function editStudentRecord(studentName, date) {
+            // 設定日期
+            document.getElementById('selectedDate').value = date;
+            
+            // 關閉學生記錄模態框
+            closeStudentRecord();
+            
+            // 稍等一下讓動畫完成，然後打開出勤選擇模態框
+            setTimeout(() => {
+                showAttendanceOptions(studentName);
+            }, 200);
+        }
+
+        // 儲存學生列表
+        async function saveStudents() {
+            // 同時儲存到 localStorage（作為備份）
+            localStorage.setItem('students', JSON.stringify(students));
+            
+            // 如果使用 Firebase，也儲存到雲端
+            if (USE_FIREBASE && db) {
+                try {
+                    await db.collection('data').doc('students').set({ data: students });
+                } catch (error) {
+                    console.error('儲存學生資料到 Firebase 失敗:', error);
+                }
+            }
+        }
+
+        // 儲存出勤記錄
+        async function saveAttendance() {
+            // 同時儲存到 localStorage（作為備份）
+            localStorage.setItem('attendance', JSON.stringify(attendance));
+            
+            // 如果使用 Firebase，也儲存到雲端
+            if (USE_FIREBASE && db) {
+                try {
+                    await db.collection('data').doc('attendance').set({ data: attendance });
+                } catch (error) {
+                    console.error('儲存出勤記錄到 Firebase 失敗:', error);
+                }
+            }
+        }
+
+        // 儲存座位配置
+        async function saveSeatLayout() {
+            // 同時儲存到 localStorage（作為備份）
+            localStorage.setItem('seatLayout', JSON.stringify(seatLayout));
+            
+            // 如果使用 Firebase，也儲存到雲端
+            if (USE_FIREBASE && db) {
+                try {
+                    await db.collection('data').doc('seatLayout').set({ data: seatLayout });
+                } catch (error) {
+                    console.error('儲存座位配置到 Firebase 失敗:', error);
+                }
+            }
+        }
+
+        // 從 Firebase 載入資料
+        async function loadDataFromFirebase() {
+            if (!USE_FIREBASE || !db) {
+                // 如果不使用 Firebase，從 localStorage 載入
+                students = JSON.parse(localStorage.getItem('students')) || [];
+                attendance = JSON.parse(localStorage.getItem('attendance')) || {};
+                seatLayout = JSON.parse(localStorage.getItem('seatLayout')) || { rows: 6, cols: 6, seats: {} };
+                dataLoaded = true;
+                renderSeats();
+                updateStats();
+                updateTopStudents(); // 更新排行榜
+                return;
+            }
+
+            try {
+                // 從 Firebase 載入資料
+                const studentsDoc = await db.collection('data').doc('students').get();
+                const attendanceDoc = await db.collection('data').doc('attendance').get();
+                const seatLayoutDoc = await db.collection('data').doc('seatLayout').get();
+
+                if (studentsDoc.exists) {
+                    students = studentsDoc.data().data || [];
+                    // 同步到 localStorage
+                    localStorage.setItem('students', JSON.stringify(students));
+                } else {
+                    // 如果 Firebase 沒有資料，嘗試從 localStorage 載入並上傳
+                    students = JSON.parse(localStorage.getItem('students')) || [];
+                    if (students.length > 0) {
+                        await saveStudents();
+                    }
+                }
+
+                if (attendanceDoc.exists) {
+                    attendance = attendanceDoc.data().data || {};
+                    // 同步到 localStorage
+                    localStorage.setItem('attendance', JSON.stringify(attendance));
+                } else {
+                    attendance = JSON.parse(localStorage.getItem('attendance')) || {};
+                    if (Object.keys(attendance).length > 0) {
+                        await saveAttendance();
+                    }
+                }
+
+                if (seatLayoutDoc.exists) {
+                    seatLayout = seatLayoutDoc.data().data || { rows: 6, cols: 6, seats: {} };
+                    // 同步到 localStorage
+                    localStorage.setItem('seatLayout', JSON.stringify(seatLayout));
+                } else {
+                    seatLayout = JSON.parse(localStorage.getItem('seatLayout')) || { rows: 6, cols: 6, seats: {} };
+                    if (seatLayout.rows && seatLayout.cols) {
+                        await saveSeatLayout();
+                    }
+                }
+
+                dataLoaded = true;
+                renderSeats();
+                updateStats();
+                updateTopStudents(); // 更新排行榜
+                
+                // 監聽資料變更（即時同步）
+                db.collection('data').doc('students').onSnapshot((doc) => {
+                    if (doc.exists && dataLoaded) {
+                        const newStudents = doc.data().data || [];
+                        if (JSON.stringify(newStudents) !== JSON.stringify(students)) {
+                            students = newStudents;
+                            localStorage.setItem('students', JSON.stringify(students));
+                            renderSeats();
+                            updateStats();
+                        }
+                    }
+                });
+
+                db.collection('data').doc('attendance').onSnapshot((doc) => {
+                    if (doc.exists && dataLoaded) {
+                        const newAttendance = doc.data().data || {};
+                        if (JSON.stringify(newAttendance) !== JSON.stringify(attendance)) {
+                            attendance = newAttendance;
+                            localStorage.setItem('attendance', JSON.stringify(attendance));
+                            renderSeats();
+                            updateStats();
+                        }
+                    }
+                });
+
+                db.collection('data').doc('seatLayout').onSnapshot((doc) => {
+                    if (doc.exists && dataLoaded) {
+                        const newSeatLayout = doc.data().data || { rows: 6, cols: 6, seats: {} };
+                        if (JSON.stringify(newSeatLayout) !== JSON.stringify(seatLayout)) {
+                            seatLayout = newSeatLayout;
+                            localStorage.setItem('seatLayout', JSON.stringify(seatLayout));
+                            renderSeats();
+                            updateStats();
+                        }
+                    }
+                });
+
+                console.log('資料載入成功');
+            } catch (error) {
+                console.error('從 Firebase 載入資料失敗:', error);
+                // 發生錯誤時，使用 localStorage 作為備份
+                students = JSON.parse(localStorage.getItem('students')) || [];
+                attendance = JSON.parse(localStorage.getItem('attendance')) || {};
+                seatLayout = JSON.parse(localStorage.getItem('seatLayout')) || { rows: 6, cols: 6, seats: {} };
+                dataLoaded = true;
+                renderSeats();
+                updateStats();
+                updateTopStudents(); // 更新排行榜
+            }
+        }
+
+        // ⚠️ 每次重新整理先抓最新格數（不使用快取）
+        loadStudentPoints();
+
+        // 再載入學生與點名資料
+        loadDataFromFirebase();
+        
+        // 每5分鐘自動重新載入格數資料
+        setInterval(loadStudentPoints, 5 * 60 * 1000);
+
+        // 格式化日期
+        function formatDate(dateString) {
+            if (!dateString) return '';
+            const date = new Date(dateString + 'T00:00:00');
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}年${month}月${day}日`;
+        }
+
+        // 格式化日期（包含星期幾）
+        function formatDateWithWeekday(dateString) {
+            if (!dateString) return '';
+            const date = new Date(dateString + 'T00:00:00');
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
+            const weekday = weekdays[date.getDay()];
+            return `${year}年${month}月${day}日 (${weekday})`;
+        }
+
+        // 搜尋學生
+        function searchStudents() {
+            try {
+                const searchDate = document.getElementById('searchDate').value;
+                const searchInput = document.getElementById('searchInput').value.trim();
+                const searchResults = document.getElementById('searchResults');
+
+                if (!searchDate) {
+                    alert('請先選擇搜尋日期！');
+                    return;
+                }
+
+                if (!searchInput) {
+                    alert('請輸入要搜尋的學生姓名或座號！');
+                    return;
+                }
+
+                // 檢查是否有學生資料
+                if (!students || students.length === 0) {
+                    searchResults.innerHTML = '<div style="text-align: center; padding: 20px; color: #999;">目前沒有學生資料，請先新增學生</div>';
+                    searchResults.style.display = 'block';
+                    return;
+                }
+
+                // 搜尋學生（根據姓名或座號）
+                const searchTerm = searchInput.toLowerCase();
+                const matchedStudents = students.filter(s => {
+                    if (!s || !s.name || s.number === undefined) return false;
+                    const nameMatch = s.name.toLowerCase().includes(searchTerm);
+                    const numberMatch = s.number.toString().includes(searchTerm);
+                    return nameMatch || numberMatch;
+                });
+
+                if (matchedStudents.length === 0) {
+                    searchResults.innerHTML = '<div style="text-align: center; padding: 20px; color: #999;">未找到符合條件的學生</div>';
+                    searchResults.style.display = 'block';
+                    return;
+                }
+
+            // 顯示搜尋結果
+            searchResults.innerHTML = matchedStudents.map(student => {
+                const todayRecord = attendance[searchDate] ? attendance[searchDate][student.name] : null;
+                const isPresent = todayRecord?.status === 'present';
+                const isAbsent = todayRecord?.status === 'absent';
+                let leaveInfo = '';
+                if (isAbsent) {
+                    leaveInfo = todayRecord.leaveTypeLabel || '其他';
+                    if (todayRecord.periodsText) {
+                        leaveInfo += ` (${todayRecord.periodsText})`;
+                    }
+                }
+                let statusText = '未記錄';
+                let statusClass = 'none';
+                
+                if (isPresent) {
+                    statusText = '✓ 出席';
+                    statusClass = 'present';
+                } else if (isAbsent) {
+                    statusText = `✗ 請假 - ${leaveInfo}`;
+                    statusClass = 'absent';
+                }
+
+                // 轉義學生姓名中的單引號，避免 onclick 錯誤
+                const escapedName = student.name.replace(/'/g, "\\'");
+                
+                return `
+                    <div class="search-result-item">
+                        <div class="search-result-info">
+                            <div class="search-result-name" style="cursor: pointer; text-decoration: underline;" onclick="showStudentRecord('${escapedName}')" title="點擊查看出缺席記錄">${student.name}</div>
+                            <div class="search-result-details">座號：${student.number} | 日期：${formatDate(searchDate)}</div>
+                        </div>
+                        <div class="search-result-status ${statusClass}">${statusText}</div>
+                        <div class="search-result-actions">
+                            <button onclick="event.stopPropagation(); searchShowAttendance('${escapedName}', '${searchDate}')" class="btn-success" style="padding: 8px 15px; font-size: 14px;">📝 記錄出勤</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+                searchResults.style.display = 'block';
+            } catch (error) {
+                console.error('搜尋時發生錯誤：', error);
+                alert('搜尋時發生錯誤，請檢查瀏覽器控制台');
+            }
+        }
+
+        // 從搜尋結果顯示出勤選項
+        function searchShowAttendance(studentName, date) {
+            // 設定搜尋日期為當前選擇的日期
+            document.getElementById('selectedDate').value = date;
+            // 顯示出勤選項
+            showAttendanceOptions(studentName);
+            // 關閉搜尋結果（可選）
+            // document.getElementById('searchResults').style.display = 'none';
+        }
+
+        // 清除搜尋
+        function clearSearch() {
+            document.getElementById('searchDate').value = '';
+            document.getElementById('searchInput').value = '';
+            document.getElementById('searchResults').style.display = 'none';
+        }
+
+        // 當日期改變時重新載入
+        document.getElementById('selectedDate').addEventListener('change', function() {
+            renderSeats();
+            updateStats();
+        });
+
+        // 允許 Enter 鍵新增學生
+        document.getElementById('studentName').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                addStudent();
+            }
+        });
+
+        document.getElementById('studentNumber').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                addStudent();
+            }
+        });
+
+        // 允許 Enter 鍵執行搜尋
+        document.getElementById('searchInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchStudents();
+            }
+        });
+
+        // 為搜尋按鈕添加事件監聽器（確保點擊能正常工作）
+        const searchBtn = document.getElementById('searchBtn');
+        if (searchBtn) {
+            searchBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                searchStudents();
+            });
+        }
+
+        // 為清除按鈕添加事件監聽器
+        const clearSearchBtn = document.getElementById('clearSearchBtn');
+        if (clearSearchBtn) {
+            clearSearchBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                clearSearch();
+            });
+        }
+
+        // 點擊模態框外部關閉
+        document.getElementById('attendanceModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeAttendanceModal();
+            }
+        });
+
+        document.getElementById('leaveTypeModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                cancelLeaveType();
+            }
+        });
+
+        document.getElementById('studentRecordModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeStudentRecord();
+            }
+        });
+
+        document.getElementById('absentListModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeAbsentList();
+            }
+        });
+
+        // 清理無效的請假記錄（修復舊數據問題）
+        function cleanInvalidRecords() {
+            Object.keys(attendance).forEach(date => {
+                Object.keys(attendance[date]).forEach(studentName => {
+                    const record = attendance[date][studentName];
+                    // 如果記錄狀態是 absent 但沒有 periods 或 periodsText，可能是舊數據
+                    if (record.status === 'absent') {
+                        // 確保有 periods 和 periodsText（如果沒有，設為空）
+                        if (!record.periods) {
+                            record.periods = [];
+                        }
+                        if (!record.periodsText) {
+                            record.periodsText = '';
+                        }
+                        // 如果沒有 leaveTypeLabel，設為默認值
+                        if (!record.leaveTypeLabel) {
+                            record.leaveTypeLabel = '其他';
+                        }
+                    }
+                    // 檢查學生是否還存在
+                    const studentExists = students.find(s => s.name === studentName);
+                    if (!studentExists) {
+                        delete attendance[date][studentName];
+                    }
+                });
+            });
+            saveAttendance();
+        }
+
+        // 清理無效記錄（等待資料載入完成後執行）
+        function initializeApp() {
+            cleanInvalidRecords();
+            // 初始化渲染
+            if (seatLayout.rows && seatLayout.cols) {
+                document.getElementById('rows').value = seatLayout.rows;
+                document.getElementById('cols').value = seatLayout.cols;
+            }
+            // renderSeats() 和 updateStats() 會在 loadDataFromFirebase() 中呼叫
+        }
+        
+        // 等待資料載入完成
+        const checkDataLoaded = setInterval(() => {
+            if (dataLoaded) {
+                clearInterval(checkDataLoaded);
+                initializeApp();
+            }
+        }, 100);
+
+        // ========== 縮放功能 ==========
+        let currentZoom = 100;
+        
+        // 初始化縮放控制（等待 DOM 載入完成）
+        function initZoomControls() {
+            const zoomSlider = document.getElementById('zoomSlider');
+            const zoomValue = document.getElementById('zoomValue');
+            const seatGridContainer = document.getElementById('seatGridContainer');
+
+            if (!zoomSlider || !zoomValue || !seatGridContainer) {
+                // 如果元素還不存在，稍後再試
+                setTimeout(initZoomControls, 100);
+                return;
+            }
+
+            // 從 localStorage 載入上次的縮放設定
+            const savedZoom = localStorage.getItem('seatZoom');
+            if (savedZoom) {
+                currentZoom = parseInt(savedZoom);
+                zoomSlider.value = currentZoom;
+                zoomValue.textContent = currentZoom + '%';
+                seatGridContainer.style.transform = `scale(${currentZoom / 100})`;
+            }
+
+            // 監聽縮放滑桿變化
+            zoomSlider.addEventListener('input', function(e) {
+                currentZoom = parseInt(e.target.value);
+                zoomValue.textContent = currentZoom + '%';
+                seatGridContainer.style.transform = `scale(${currentZoom / 100})`;
+                // 儲存縮放設定
+                localStorage.setItem('seatZoom', currentZoom);
+            });
+        }
+
+        // 重置縮放
+        function resetZoom() {
+            const zoomSlider = document.getElementById('zoomSlider');
+            const zoomValue = document.getElementById('zoomValue');
+            const seatGridContainer = document.getElementById('seatGridContainer');
+            
+            if (zoomSlider && zoomValue && seatGridContainer) {
+                currentZoom = 100;
+                zoomSlider.value = currentZoom;
+                zoomValue.textContent = currentZoom + '%';
+                seatGridContainer.style.transform = `scale(1)`;
+                localStorage.setItem('seatZoom', currentZoom);
+            }
+        }
+
+        // 適應螢幕（自動計算適合的縮放比例）
+        function fitToScreen() {
+            const seatGridContainer = document.getElementById('seatGridContainer');
+            const grid = document.getElementById('seatGrid');
+            const zoomSlider = document.getElementById('zoomSlider');
+            const zoomValue = document.getElementById('zoomValue');
+            
+            if (!seatGridContainer || !grid || !seatLayout.rows || !seatLayout.cols) return;
+
+            // 計算座位表的實際大小
+            const seatWidth = 120; // 每個座位的寬度
+            const seatHeight = 100; // 每個座位的高度
+            const gap = 10; // 間距
+            const padding = 40; // 內邊距
+            
+            const gridWidth = (seatWidth + gap) * seatLayout.cols - gap + padding;
+            const gridHeight = (seatHeight + gap) * seatLayout.rows - gap + padding;
+            
+            // 取得視窗大小（減去一些邊距）
+            const viewportWidth = window.innerWidth - 100;
+            const viewportHeight = window.innerHeight - 300;
+            
+            // 計算適合的縮放比例
+            const scaleX = viewportWidth / gridWidth;
+            const scaleY = viewportHeight / gridHeight;
+            const optimalScale = Math.min(scaleX, scaleY, 1) * 100; // 不超過 100%
+            
+            // 設定縮放（最小 30%，最大 100%）
+            currentZoom = Math.max(30, Math.min(100, Math.floor(optimalScale / 5) * 5));
+            
+            if (zoomSlider && zoomValue) {
+                zoomSlider.value = currentZoom;
+                zoomValue.textContent = currentZoom + '%';
+            }
+            seatGridContainer.style.transform = `scale(${currentZoom / 100})`;
+            localStorage.setItem('seatZoom', currentZoom);
+        }
+
+        // 頁面載入完成後初始化縮放控制
+        window.addEventListener('DOMContentLoaded', function() {
+            setTimeout(initZoomControls, 500);
+        });
+        // ========== 縮放功能結束 ==========
+    
+        function undoShuffle() {
+            if (!previousSeatSnapshot) {
+                alert('目前沒有可以復原的座位變更');
+                return;
+            }
+
+            previousSeatSnapshot.forEach(prev => {
+                const student = students.find(s => s.name === prev.name);
+                if (student) {
+                    student.row = prev.row;
+                    student.col = prev.col;
+                }
+            });
+
+            saveStudents();
+            renderSeats();
+        }
+
+</script>
+
+<script>
+function getTaiwanNow() {
+    return new Date(
+        new Date().toLocaleString("en-US", { timeZone: "Asia/Taipei" })
+    );
+}
+
+function setAllDatesToToday() {
+    const t = getTaiwanNow();
+    const yyyy = t.getFullYear();
+    const mm = String(t.getMonth() + 1).padStart(2, '0');
+    const dd = String(t.getDate()).padStart(2, '0');
+    const today = `${yyyy}-${mm}-${dd}`;
+
+    document.querySelectorAll('input[type="date"]').forEach(el => {
+        el.value = today;
+    });
+
+    document.querySelectorAll('[data-today]').forEach(el => {
+        el.textContent = `${mm}/${dd}`;
+    });
+}
+
+function scheduleNextMidnightUpdate() {
+    const now = getTaiwanNow();
+    const nextMidnight = new Date(now);
+    nextMidnight.setHours(24, 0, 0, 0);
+    const msUntilMidnight = nextMidnight - now;
+
+    setTimeout(() => {
+        setAllDatesToToday();
+        scheduleNextMidnightUpdate();
+    }, msUntilMidnight + 1000);
+}
+
+window.addEventListener("load", () => {
+    setAllDatesToToday();
+    scheduleNextMidnightUpdate();
+});
+</script>
+
+</body>
+</html>
