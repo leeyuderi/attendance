@@ -209,7 +209,6 @@
             background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
         }
         
-        /* 新增：警告色按鈕 (用於清除狀態) */
         .btn-warning {
             background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
             color: white;
@@ -527,7 +526,7 @@
         }
 
         #studentRecordModal {
-            z-index: 2000; /* 確保在請假名單模態框之上 */
+            z-index: 2000;
         }
 
         @keyframes fadeIn {
@@ -929,14 +928,11 @@ let studentPoints = {}; // 座號 -> 累計格數
 let previousSeatSnapshot = null; // 換座位前的備份
 
         // ========== Firebase 設定區 ==========
-        // 請將以下設定替換為您的 Firebase 設定
-        // 詳細說明請參考 FIREBASE_SETUP.md
-        let USE_FIREBASE = true; // 設為 true 啟用 Firebase，false 則使用 localStorage
+        let USE_FIREBASE = true;
         
         let db = null;
         if (USE_FIREBASE) {
             const firebaseConfig = {
-                // TODO: 請替換為您的 Firebase 設定
                 apiKey: "AIzaSyBfgQhkccwSBqPcfOYp8QUR7RuvG9unKIc",
                 authDomain: "attendancesystem-yuderlee.firebaseapp.com",
                 projectId: "attendancesystem-yuderlee",
@@ -1071,7 +1067,7 @@ let previousSeatSnapshot = null; // 換座位前的備份
             renderSeats();
         }
 
-        // 打亂座位 (包含特殊防呆機制：41號必須跟2號或22號在旁邊)
+        // 打亂座位 (包含客製化黑箱條件)
         function shuffleSeats() {
             // 備份目前座位狀態
             previousSeatSnapshot = students.map(s => ({ name: s.name, row: s.row, col: s.col }));
@@ -1103,94 +1099,87 @@ let previousSeatSnapshot = null; // 換座位前的備份
                 col: s.col
             }));
 
-            // 檢查是否需要啟動特殊條件 (找出是否有 41 號，且 2 或 22 號也在已分配的座位中)
-            const student41 = assignedStudents.find(s => s.number === 41);
-            const student2 = assignedStudents.find(s => s.number === 2);
-            const student22 = assignedStudents.find(s => s.number === 22);
-            const needsSpecialRule = student41 && (student2 || student22);
+            // --- 特殊座位綁定邏輯開始 ---
+            let pool = [...occupiedSeats];
+            let assignments = new Map(); // 用來暫存分配結果: 姓名 -> {row, col}
 
-            let bestConfiguration = null;
-            let conditionMet = false;
+            const s41 = assignedStudents.find(s => s.number === 41);
+            const s22 = assignedStudents.find(s => s.number === 22);
+            const s2 = assignedStudents.find(s => s.number === 2);
 
-            if (needsSpecialRule) {
-                // 如果需要滿足特殊條件，最多嘗試 100 次隨機打亂，以避免無限迴圈
-                for (let attempt = 0; attempt < 100; attempt++) {
-                    const shuffledSeats = [...occupiedSeats].sort(() => Math.random() - 0.5);
-                    
-                    let s41Pos = null, s2Pos = null, s22Pos = null;
-                    
-                    assignedStudents.forEach((student, index) => {
-                        if (student.number === 41) s41Pos = shuffledSeats[index];
-                        if (student.number === 2) s2Pos = shuffledSeats[index];
-                        if (student.number === 22) s22Pos = shuffledSeats[index];
-                    });
-
-                    // 檢查九宮格相鄰 (距離 <= 1)
-                    const isAdjacent = (pos1, pos2) => {
-                        if (!pos1 || !pos2) return false;
-                        return Math.abs(pos1.row - pos2.row) <= 1 && Math.abs(pos1.col - pos2.col) <= 1;
-                    };
-
-                    if (isAdjacent(s41Pos, s2Pos) || isAdjacent(s41Pos, s22Pos)) {
-                        bestConfiguration = shuffledSeats;
-                        conditionMet = true;
-                        break;
-                    }
-                    
-                    // 暫存最後一次嘗試結果
-                    bestConfiguration = shuffledSeats;
-                }
-
-                // 如果隨機 100 次都沒有碰到剛好相鄰的情況，則採取「強制換位」來保證規則成立
-                if (!conditionMet) {
-                    let s41Index = -1, s2Index = -1, s22Index = -1;
-                    
-                    assignedStudents.forEach((student, index) => {
-                        if (student.number === 41) s41Index = index;
-                        if (student.number === 2) s2Index = index;
-                        if (student.number === 22) s22Index = index;
-                    });
-
-                    const s41Pos = bestConfiguration[s41Index];
-                    
-                    // 找出 41 號旁邊「目前有坐人」的位置
-                    const adjacentIndices = [];
-                    bestConfiguration.forEach((seat, index) => {
-                        if (index !== s41Index && 
-                            Math.abs(seat.row - s41Pos.row) <= 1 && 
-                            Math.abs(seat.col - s41Pos.col) <= 1) {
-                            adjacentIndices.push(index);
+            // 條件1：若有41和22號，強制22號在41號的左邊或右邊
+            if (s41 && s22) {
+                let adjacentPairs = [];
+                // 尋找池子裡所有左右相鄰的座位對
+                for (let i = 0; i < pool.length; i++) {
+                    for (let j = i + 1; j < pool.length; j++) {
+                        if (pool[i].row === pool[j].row && Math.abs(pool[i].col - pool[j].col) === 1) {
+                            adjacentPairs.push([pool[i], pool[j]]);
                         }
-                    });
-
-                    // 如果 41 號旁邊有位置，就把 2 或 22 號強行換過去
-                    if (adjacentIndices.length > 0) {
-                        const targetAdjacentIndex = adjacentIndices[Math.floor(Math.random() * adjacentIndices.length)];
-                        
-                        // 決定要換 2 號還是 22 號 (如果都在就隨機挑一個)
-                        let studentToMoveIndex = -1;
-                        if (s2Index !== -1 && s22Index !== -1) {
-                            studentToMoveIndex = Math.random() > 0.5 ? s2Index : s22Index;
-                        } else {
-                            studentToMoveIndex = s2Index !== -1 ? s2Index : s22Index;
-                        }
-
-                        // 進行座標交換
-                        const tempSeat = bestConfiguration[targetAdjacentIndex];
-                        bestConfiguration[targetAdjacentIndex] = bestConfiguration[studentToMoveIndex];
-                        bestConfiguration[studentToMoveIndex] = tempSeat;
                     }
                 }
-            } else {
-                // 如果不需要啟動特殊條件，一般打亂即可
-                bestConfiguration = [...occupiedSeats].sort(() => Math.random() - 0.5);
+
+                if (adjacentPairs.length > 0) {
+                    // 隨機選一對相鄰座位
+                    let chosenPair = adjacentPairs[Math.floor(Math.random() * adjacentPairs.length)];
+                    // 隨機決定誰左誰右
+                    if (Math.random() > 0.5) {
+                        assignments.set(s41.name, chosenPair[0]);
+                        assignments.set(s22.name, chosenPair[1]);
+                    } else {
+                        assignments.set(s41.name, chosenPair[1]);
+                        assignments.set(s22.name, chosenPair[0]);
+                    }
+                    // 將這兩個座位移出可用池
+                    pool = pool.filter(seat => seat !== chosenPair[0] && seat !== chosenPair[1]);
+                } else {
+                    // 若極端情況下沒有任何相鄰座位，就退回單純給41隨機排
+                    let idx = Math.floor(Math.random() * pool.length);
+                    assignments.set(s41.name, pool[idx]);
+                    pool.splice(idx, 1);
+                }
+            } else if (s41) {
+                // 如果只有41沒有22，先隨機分配41號
+                let idx = Math.floor(Math.random() * pool.length);
+                assignments.set(s41.name, pool[idx]);
+                pool.splice(idx, 1);
             }
 
-            // 重新分配
-            assignedStudents.forEach((student, index) => {
-                student.row = bestConfiguration[index].row;
-                student.col = bestConfiguration[index].col;
+            // 條件2：若有2號且41已分配，有 75% 機率 2號會在 41號的九宮格周圍
+            if (s41 && s2 && assignments.has(s41.name)) {
+                if (Math.random() < 0.75) {
+                    let pos41 = assignments.get(s41.name);
+                    // 找出仍在可用池裡、且位於41號九宮格內的座位
+                    let neighbors = pool.filter(seat => 
+                        Math.abs(seat.row - pos41.row) <= 1 && 
+                        Math.abs(seat.col - pos41.col) <= 1
+                    );
+                    
+                    if (neighbors.length > 0) {
+                        let chosenNeighbor = neighbors[Math.floor(Math.random() * neighbors.length)];
+                        assignments.set(s2.name, chosenNeighbor);
+                        pool = pool.filter(seat => seat !== chosenNeighbor);
+                    }
+                }
+            }
+
+            // 將剩餘座位打亂
+            pool.sort(() => Math.random() - 0.5);
+
+            // 分配其餘學生
+            assignedStudents.forEach(student => {
+                if (!assignments.has(student.name)) {
+                    assignments.set(student.name, pool.pop());
+                }
             });
+
+            // 正式更新回學生資料
+            assignedStudents.forEach(student => {
+                let pos = assignments.get(student.name);
+                student.row = pos.row;
+                student.col = pos.col;
+            });
+            // --- 特殊座位綁定邏輯結束 ---
 
             saveStudents();
             renderSeats();
@@ -1220,7 +1209,7 @@ let previousSeatSnapshot = null; // 換座位前的備份
         // 從 Google Sheets 讀取格數資料
         async function loadStudentPoints() {
             try {
-                const response = await fetch(GOOGLE_SHEETS_URL + '&t=' + Date.now()); // 添加時間戳避免快取
+                const response = await fetch(GOOGLE_SHEETS_URL + '&t=' + Date.now()); 
                 if (!response.ok) {
                     throw new Error('無法讀取 Google Sheets 資料');
                 }
@@ -1232,13 +1221,12 @@ let previousSeatSnapshot = null; // 換座位前的備份
                 
                 // 解析 CSV（跳過第46行，那是日期）
                 lines.forEach((line, index) => {
-                    if (index === 45) return; // 跳過第46行（索引45，因為是日期行）
+                    if (index === 45) return; 
                     
                     const columns = parseCSVLine(line);
                     if (columns.length > 0) {
-                        // 第一欄（A欄）是總格數
                         const totalPoints = parseFloat(columns[0]) || 0;
-                        const studentNumber = index + 1; // 第1行是1號，第2行是2號...
+                        const studentNumber = index + 1; 
                         if (!isNaN(totalPoints)) {
                             studentPoints[studentNumber] = totalPoints;
                         }
@@ -1254,7 +1242,6 @@ let previousSeatSnapshot = null; // 換座位前的備份
                 }
             } catch (error) {
                 console.error('載入學生格數失敗:', error);
-                // 如果載入失敗，不影響其他功能
             }
         }
 
@@ -1268,22 +1255,20 @@ let previousSeatSnapshot = null; // 換座位前的備份
                 return;
             }
 
-            // 將格數資料轉換為陣列並排序
             const pointsArray = Object.entries(studentPoints)
                 .map(([number, points]) => ({
                     number: parseInt(number),
                     points: points
                 }))
-                .filter(item => item.points > 0) // 只顯示格數大於0的
-                .sort((a, b) => b.points - a.points) // 由高到低排序
-                .slice(0, 12); // 取前12名
+                .filter(item => item.points > 0) 
+                .sort((a, b) => b.points - a.points) 
+                .slice(0, 12); 
 
             if (pointsArray.length === 0) {
                 topStudentsDisplay.style.display = 'none';
                 return;
             }
 
-            // 顯示前12名
             const topListText = pointsArray.map(item => `${item.number}號(${item.points})`).join('、');
             topStudentsList.textContent = topListText;
             topStudentsDisplay.style.display = 'block';
@@ -1302,7 +1287,6 @@ let previousSeatSnapshot = null; // 換座位前的備份
                 seatGrid.style.gridTemplateColumns = `repeat(${seatLayout.cols}, 1fr)`;
                 seatGrid.innerHTML = '';
 
-                // 建立座位網格
                 for (let row = 0; row < seatLayout.rows; row++) {
                     for (let col = 0; col < seatLayout.cols; col++) {
                         const seatKey = `${row}-${col}`;
@@ -1311,7 +1295,6 @@ let previousSeatSnapshot = null; // 換座位前的備份
                         seatCell.dataset.row = row;
                         seatCell.dataset.col = col;
 
-                        // 找到這個座位的學生
                         const student = students.find(s => s.row === row && s.col === col);
                         
                         if (student) {
@@ -1345,7 +1328,6 @@ let previousSeatSnapshot = null; // 換座位前的備份
                             `;
 
                             card.addEventListener('click', (e) => {
-                                // 如果點擊的是姓名或刪除按鈕，不觸發出勤選項
                                 if (e.target.classList.contains('seat-name') || e.target.classList.contains('delete-student-btn')) {
                                     return;
                                 }
@@ -1371,7 +1353,6 @@ let previousSeatSnapshot = null; // 換座位前的備份
                             seatCell.innerHTML = '<div class="empty-seat">空位</div>';
                         }
 
-                        // 拖放事件
                         seatCell.addEventListener('dragover', (e) => {
                             e.preventDefault();
                             e.stopPropagation();
@@ -1389,7 +1370,6 @@ let previousSeatSnapshot = null; // 換座位前的備份
                             e.stopPropagation();
                             seatCell.classList.remove('dragover');
                             
-                            // 從 dataTransfer 或全局變數獲取學生名稱
                             const studentName = e.dataTransfer.getData('text/plain') || draggingStudent;
                             
                             if (studentName) {
@@ -1398,10 +1378,8 @@ let previousSeatSnapshot = null; // 換座位前的備份
                                     const newRow = parseInt(seatCell.dataset.row);
                                     const newCol = parseInt(seatCell.dataset.col);
                                     
-                                    // 檢查新位置是否已有學生
                                     const existingStudent = students.find(s => s.row === newRow && s.col === newCol && s.name !== student.name);
                                     if (existingStudent) {
-                                        // 交換位置
                                         const tempRow = student.row;
                                         const tempCol = student.col;
                                         student.row = newRow;
@@ -1426,40 +1404,29 @@ let previousSeatSnapshot = null; // 換座位前的備份
                 seatConfig.style.display = 'none';
             }
 
-            // 顯示未分配座位的學生（所有沒有座位的學生）
-            // 如果沒有設定座位，所有學生都視為未分配
             let unassigned = [];
             if (!seatLayout.rows || !seatLayout.cols) {
-                // 沒有設定座位時，顯示所有學生
                 unassigned = [...students];
             } else {
-                // 有設定座位時，只顯示沒有被分配到有效座位的學生
                 students.forEach(s => {
                     let isAssigned = false;
-                    
-                    // 檢查是否有有效的座位分配
                     if (s.row !== null && s.row !== undefined && 
                         s.col !== null && s.col !== undefined) {
-                        // 檢查是否在有效範圍內
                         if (s.row >= 0 && s.row < seatLayout.rows && 
                             s.col >= 0 && s.col < seatLayout.cols) {
                             isAssigned = true;
                         }
                     }
-                    
-                    // 如果沒有被分配，加入未分配列表
                     if (!isAssigned) {
                         unassigned.push(s);
                     }
                 });
             }
             
-            // 顯示未分配區域（只要有學生存在就顯示，以便接收拖放）
             if (students.length > 0) {
                 unassignedStudents.style.display = 'block';
-                unassignedList.innerHTML = ''; // 清空列表
+                unassignedList.innerHTML = ''; 
                 
-                // 如果沒有未分配的學生，顯示提示文字
                 if (unassigned.length === 0) {
                     const hint = document.createElement('div');
                     hint.style.cssText = 'color: #999; font-style: italic; padding: 20px; text-align: center; width: 100%; pointer-events: none;';
@@ -1467,7 +1434,6 @@ let previousSeatSnapshot = null; // 換座位前的備份
                     unassignedList.appendChild(hint);
                 }
                 
-                // 顯示未分配的學生
                 unassigned.forEach(student => {
                     const card = document.createElement('div');
                     card.className = 'unassigned-card';
@@ -1504,7 +1470,6 @@ let previousSeatSnapshot = null; // 換座位前的備份
                     unassignedList.appendChild(card);
                 });
 
-                // 為未分配區域添加拖放事件監聽器（允許將座位上的學生拖回）
                 unassignedList.addEventListener('dragover', (e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -1514,7 +1479,6 @@ let previousSeatSnapshot = null; // 換座位前的備份
                 unassignedList.addEventListener('dragleave', (e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    // 只有當離開整個未分配區域時才移除高亮
                     if (!unassignedList.contains(e.relatedTarget)) {
                         unassignedList.classList.remove('dragover');
                     }
@@ -1525,13 +1489,11 @@ let previousSeatSnapshot = null; // 換座位前的備份
                     e.stopPropagation();
                     unassignedList.classList.remove('dragover');
                     
-                    // 從 dataTransfer 或全局變數獲取學生名稱
                     const studentName = e.dataTransfer.getData('text/plain') || draggingStudent;
                     
                     if (studentName) {
                         const student = students.find(s => s.name === studentName);
                         if (student) {
-                            // 清除學生的座位分配
                             student.row = null;
                             student.col = null;
                             saveStudents();
@@ -1555,7 +1517,6 @@ let previousSeatSnapshot = null; // 換座位前的備份
             currentLeaveStudent = studentName;
             document.getElementById('attendanceModalTitle').textContent = `選擇「${studentName}」的出勤狀態`;
             
-            // 檢查當前是否有記錄
             const statusInfo = document.getElementById('currentStatusInfo');
             const clearBtn = document.getElementById('clearRecordBtn');
             const todayRecord = attendance[date] ? attendance[date][studentName] : null;
@@ -1599,7 +1560,7 @@ let previousSeatSnapshot = null; // 換座位前的備份
             currentLeaveStudent = null;
         }
 
-        // 清除出勤記錄 (修復版：支援取消狀態)
+        // 清除出勤記錄
         function clearAttendanceRecord() {
             if (!confirm('確定要清除此學生的出勤記錄嗎？\n(這將使學生恢復為未點名狀態)')) {
                 return;
@@ -1612,7 +1573,6 @@ let previousSeatSnapshot = null; // 換座位前的備份
                 renderSeats();
                 updateStats();
                 
-                // 如果目前正在搜尋，也要更新搜尋結果
                 if (document.getElementById('searchResults').style.display === 'block') {
                     searchStudents();
                 }
@@ -1631,12 +1591,10 @@ let previousSeatSnapshot = null; // 換座位前的備份
             document.getElementById('otherLeaveInput').classList.remove('show');
             document.getElementById('otherLeaveText').value = '';
             
-            // 重置按鈕狀態
             document.querySelectorAll('.leave-type-btn').forEach(btn => {
                 btn.classList.remove('selected');
             });
 
-            // 重置全天按鈕狀態
             const allDayBtn = document.getElementById('allDayBtn');
             if (allDayBtn) {
                 allDayBtn.classList.remove('selected');
@@ -1644,7 +1602,6 @@ let previousSeatSnapshot = null; // 換座位前的備份
                 allDayBtn.style.color = '#856404';
             }
 
-            // 生成節次按鈕
             const periodButtons = document.getElementById('periodButtons');
             periodButtons.innerHTML = '';
             for (let i = 1; i <= 11; i++) {
@@ -1660,15 +1617,12 @@ let previousSeatSnapshot = null; // 換座位前的備份
 
         // 選擇全天
         function selectAllDay() {
-            // 選擇所有節次（1-11）
             selectedPeriods = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
             
-            // 更新所有節次按鈕狀態
             document.querySelectorAll('.period-btn[data-period]').forEach(btn => {
                 btn.classList.add('selected');
             });
             
-            // 更新全天按鈕狀態
             const allDayBtn = document.getElementById('allDayBtn');
             if (allDayBtn) {
                 allDayBtn.classList.add('selected');
@@ -1689,13 +1643,11 @@ let previousSeatSnapshot = null; // 換座位前的備份
             }
             selectedPeriods.sort((a, b) => a - b);
             
-            // 更新按鈕狀態
             const btn = document.querySelector(`.period-btn[data-period="${period}"]`);
             if (btn) {
                 btn.classList.toggle('selected');
             }
             
-            // 如果取消任何節次，取消全天狀態
             const allDayBtn = document.getElementById('allDayBtn');
             if (allDayBtn && selectedPeriods.length < 11) {
                 allDayBtn.classList.remove('selected');
@@ -1703,7 +1655,6 @@ let previousSeatSnapshot = null; // 換座位前的備份
                 allDayBtn.style.color = '#856404';
             }
             
-            // 如果選擇了所有節次，自動標記為全天
             if (selectedPeriods.length === 11 && allDayBtn) {
                 allDayBtn.classList.add('selected');
                 allDayBtn.style.background = '#ffc107';
@@ -1729,13 +1680,11 @@ let previousSeatSnapshot = null; // 換座位前的備份
         function selectLeaveType(type) {
             selectedLeaveType = type;
             
-            // 更新按鈕狀態
             document.querySelectorAll('.leave-type-btn').forEach(btn => {
                 btn.classList.remove('selected');
             });
             event.target.classList.add('selected');
 
-            // 如果是「其他」，顯示輸入框
             if (type === 'other') {
                 document.getElementById('otherLeaveInput').classList.add('show');
             } else {
@@ -1797,7 +1746,6 @@ let previousSeatSnapshot = null; // 換座位前的備份
                     leaveTypeLabel = otherLeaveText;
                 }
                 
-                // 格式化節次顯示
                 let periodsText = '';
                 if (selectedPeriods.length === 11) {
                     periodsText = '全天';
@@ -1809,9 +1757,9 @@ let previousSeatSnapshot = null; // 換座位前的備份
                     status: 'absent',
                     leaveType: selectedLeaveType || 'other',
                     leaveTypeLabel: leaveTypeLabel,
-                    periods: [...selectedPeriods], // 保存節次陣列
-                    periodsText: periodsText, // 保存節次文字
-                    isAllDay: selectedPeriods.length === 11 // 標記是否全天
+                    periods: [...selectedPeriods], 
+                    periodsText: periodsText, 
+                    isAllDay: selectedPeriods.length === 11 
                 };
             }
 
@@ -1832,7 +1780,6 @@ let previousSeatSnapshot = null; // 換座位前的備份
                 
                 document.getElementById('presentCount').textContent = presentCount;
                 
-                // 讓請假人數可點擊查看
                 const absentCountEl = document.getElementById('absentCount');
                 absentCountEl.textContent = absentCount;
                 if (absentCount > 0) {
@@ -1873,7 +1820,7 @@ let previousSeatSnapshot = null; // 換座位前的備份
                     const record = records[name];
                     return { student, record };
                 })
-                .filter(item => item.student) // 過濾掉已刪除的學生
+                .filter(item => item.student) 
                 .sort((a, b) => a.student.number - b.student.number);
 
             if (absentStudents.length === 0) {
@@ -1888,7 +1835,6 @@ let previousSeatSnapshot = null; // 換座位前的備份
                 if (record.periodsText) {
                     leaveInfo += ` (${record.periodsText})`;
                 }
-                // 轉義學生姓名中的單引號
                 const escapedName = student.name.replace(/'/g, "\\'");
                 return `
                     <div class="search-result-item" style="cursor: pointer;" onclick="closeAbsentList(); setTimeout(() => showStudentRecord('${escapedName}'), 100);">
@@ -1918,7 +1864,6 @@ let previousSeatSnapshot = null; // 換座位前的備份
 
             document.getElementById('studentRecordTitle').textContent = `${student.name} (座號 ${student.number}) 的出缺席記錄`;
 
-            // 收集所有記錄
             const allRecords = [];
             Object.keys(attendance).sort().reverse().forEach(date => {
                 const record = attendance[date][studentName];
@@ -1931,7 +1876,6 @@ let previousSeatSnapshot = null; // 換座位前的備份
             if (allRecords.length === 0) {
                 content.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;">尚無出缺席記錄</div>';
             } else {
-                // 轉義學生姓名中的單引號
                 const escapedName = studentName.replace(/'/g, "\\'");
                 
                 content.innerHTML = allRecords.map(({ date, record }) => {
@@ -1974,13 +1918,8 @@ let previousSeatSnapshot = null; // 換座位前的備份
 
         // 編輯學生記錄
         function editStudentRecord(studentName, date) {
-            // 設定日期
             document.getElementById('selectedDate').value = date;
-            
-            // 關閉學生記錄模態框
             closeStudentRecord();
-            
-            // 稍等一下讓動畫完成，然後打開出勤選擇模態框
             setTimeout(() => {
                 showAttendanceOptions(studentName);
             }, 200);
@@ -1988,10 +1927,8 @@ let previousSeatSnapshot = null; // 換座位前的備份
 
         // 儲存學生列表
         async function saveStudents() {
-            // 同時儲存到 localStorage（作為備份）
             localStorage.setItem('students', JSON.stringify(students));
             
-            // 如果使用 Firebase，也儲存到雲端
             if (USE_FIREBASE && db) {
                 try {
                     await db.collection('data').doc('students').set({ data: students });
@@ -2003,10 +1940,8 @@ let previousSeatSnapshot = null; // 換座位前的備份
 
         // 儲存出勤記錄
         async function saveAttendance() {
-            // 同時儲存到 localStorage（作為備份）
             localStorage.setItem('attendance', JSON.stringify(attendance));
             
-            // 如果使用 Firebase，也儲存到雲端
             if (USE_FIREBASE && db) {
                 try {
                     await db.collection('data').doc('attendance').set({ data: attendance });
@@ -2018,10 +1953,8 @@ let previousSeatSnapshot = null; // 換座位前的備份
 
         // 儲存座位配置
         async function saveSeatLayout() {
-            // 同時儲存到 localStorage（作為備份）
             localStorage.setItem('seatLayout', JSON.stringify(seatLayout));
             
-            // 如果使用 Firebase，也儲存到雲端
             if (USE_FIREBASE && db) {
                 try {
                     await db.collection('data').doc('seatLayout').set({ data: seatLayout });
@@ -2034,29 +1967,25 @@ let previousSeatSnapshot = null; // 換座位前的備份
         // 從 Firebase 載入資料
         async function loadDataFromFirebase() {
             if (!USE_FIREBASE || !db) {
-                // 如果不使用 Firebase，從 localStorage 載入
                 students = JSON.parse(localStorage.getItem('students')) || [];
                 attendance = JSON.parse(localStorage.getItem('attendance')) || {};
                 seatLayout = JSON.parse(localStorage.getItem('seatLayout')) || { rows: 6, cols: 6, seats: {} };
                 dataLoaded = true;
                 renderSeats();
                 updateStats();
-                updateTopStudents(); // 更新排行榜
+                updateTopStudents(); 
                 return;
             }
 
             try {
-                // 從 Firebase 載入資料
                 const studentsDoc = await db.collection('data').doc('students').get();
                 const attendanceDoc = await db.collection('data').doc('attendance').get();
                 const seatLayoutDoc = await db.collection('data').doc('seatLayout').get();
 
                 if (studentsDoc.exists) {
                     students = studentsDoc.data().data || [];
-                    // 同步到 localStorage
                     localStorage.setItem('students', JSON.stringify(students));
                 } else {
-                    // 如果 Firebase 沒有資料，嘗試從 localStorage 載入並上傳
                     students = JSON.parse(localStorage.getItem('students')) || [];
                     if (students.length > 0) {
                         await saveStudents();
@@ -2065,7 +1994,6 @@ let previousSeatSnapshot = null; // 換座位前的備份
 
                 if (attendanceDoc.exists) {
                     attendance = attendanceDoc.data().data || {};
-                    // 同步到 localStorage
                     localStorage.setItem('attendance', JSON.stringify(attendance));
                 } else {
                     attendance = JSON.parse(localStorage.getItem('attendance')) || {};
@@ -2076,7 +2004,6 @@ let previousSeatSnapshot = null; // 換座位前的備份
 
                 if (seatLayoutDoc.exists) {
                     seatLayout = seatLayoutDoc.data().data || { rows: 6, cols: 6, seats: {} };
-                    // 同步到 localStorage
                     localStorage.setItem('seatLayout', JSON.stringify(seatLayout));
                 } else {
                     seatLayout = JSON.parse(localStorage.getItem('seatLayout')) || { rows: 6, cols: 6, seats: {} };
@@ -2088,9 +2015,8 @@ let previousSeatSnapshot = null; // 換座位前的備份
                 dataLoaded = true;
                 renderSeats();
                 updateStats();
-                updateTopStudents(); // 更新排行榜
+                updateTopStudents(); 
                 
-                // 監聽資料變更（即時同步）
                 db.collection('data').doc('students').onSnapshot((doc) => {
                     if (doc.exists && dataLoaded) {
                         const newStudents = doc.data().data || [];
@@ -2130,27 +2056,21 @@ let previousSeatSnapshot = null; // 換座位前的備份
                 console.log('資料載入成功');
             } catch (error) {
                 console.error('從 Firebase 載入資料失敗:', error);
-                // 發生錯誤時，使用 localStorage 作為備份
                 students = JSON.parse(localStorage.getItem('students')) || [];
                 attendance = JSON.parse(localStorage.getItem('attendance')) || {};
                 seatLayout = JSON.parse(localStorage.getItem('seatLayout')) || { rows: 6, cols: 6, seats: {} };
                 dataLoaded = true;
                 renderSeats();
                 updateStats();
-                updateTopStudents(); // 更新排行榜
+                updateTopStudents(); 
             }
         }
 
-        // ⚠️ 每次重新整理先抓最新格數（不使用快取）
         loadStudentPoints();
-
-        // 再載入學生與點名資料
         loadDataFromFirebase();
         
-        // 每5分鐘自動重新載入格數資料
         setInterval(loadStudentPoints, 5 * 60 * 1000);
 
-        // 格式化日期
         function formatDate(dateString) {
             if (!dateString) return '';
             const date = new Date(dateString + 'T00:00:00');
@@ -2160,7 +2080,6 @@ let previousSeatSnapshot = null; // 換座位前的備份
             return `${year}年${month}月${day}日`;
         }
 
-        // 格式化日期（包含星期幾）
         function formatDateWithWeekday(dateString) {
             if (!dateString) return '';
             const date = new Date(dateString + 'T00:00:00');
@@ -2172,7 +2091,6 @@ let previousSeatSnapshot = null; // 換座位前的備份
             return `${year}年${month}月${day}日 (${weekday})`;
         }
 
-        // 搜尋學生
         function searchStudents() {
             try {
                 const searchDate = document.getElementById('searchDate').value;
@@ -2189,14 +2107,12 @@ let previousSeatSnapshot = null; // 換座位前的備份
                     return;
                 }
 
-                // 檢查是否有學生資料
                 if (!students || students.length === 0) {
                     searchResults.innerHTML = '<div style="text-align: center; padding: 20px; color: #999;">目前沒有學生資料，請先新增學生</div>';
                     searchResults.style.display = 'block';
                     return;
                 }
 
-                // 搜尋學生（根據姓名或座號）
                 const searchTerm = searchInput.toLowerCase();
                 const matchedStudents = students.filter(s => {
                     if (!s || !s.name || s.number === undefined) return false;
@@ -2211,7 +2127,6 @@ let previousSeatSnapshot = null; // 換座位前的備份
                     return;
                 }
 
-            // 顯示搜尋結果
             searchResults.innerHTML = matchedStudents.map(student => {
                 const todayRecord = attendance[searchDate] ? attendance[searchDate][student.name] : null;
                 const isPresent = todayRecord?.status === 'present';
@@ -2234,7 +2149,6 @@ let previousSeatSnapshot = null; // 換座位前的備份
                     statusClass = 'absent';
                 }
 
-                // 轉義學生姓名中的單引號，避免 onclick 錯誤
                 const escapedName = student.name.replace(/'/g, "\\'");
                 
                 return `
@@ -2258,30 +2172,22 @@ let previousSeatSnapshot = null; // 換座位前的備份
             }
         }
 
-        // 從搜尋結果顯示出勤選項
         function searchShowAttendance(studentName, date) {
-            // 設定搜尋日期為當前選擇的日期
             document.getElementById('selectedDate').value = date;
-            // 顯示出勤選項
             showAttendanceOptions(studentName);
-            // 關閉搜尋結果（可選）
-            // document.getElementById('searchResults').style.display = 'none';
         }
 
-        // 清除搜尋
         function clearSearch() {
             document.getElementById('searchDate').value = '';
             document.getElementById('searchInput').value = '';
             document.getElementById('searchResults').style.display = 'none';
         }
 
-        // 當日期改變時重新載入
         document.getElementById('selectedDate').addEventListener('change', function() {
             renderSeats();
             updateStats();
         });
 
-        // 允許 Enter 鍵新增學生
         document.getElementById('studentName').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 addStudent();
@@ -2294,14 +2200,12 @@ let previousSeatSnapshot = null; // 換座位前的備份
             }
         });
 
-        // 允許 Enter 鍵執行搜尋
         document.getElementById('searchInput').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 searchStudents();
             }
         });
 
-        // 為搜尋按鈕添加事件監聽器（確保點擊能正常工作）
         const searchBtn = document.getElementById('searchBtn');
         if (searchBtn) {
             searchBtn.addEventListener('click', function(e) {
@@ -2310,7 +2214,6 @@ let previousSeatSnapshot = null; // 換座位前的備份
             });
         }
 
-        // 為清除按鈕添加事件監聽器
         const clearSearchBtn = document.getElementById('clearSearchBtn');
         if (clearSearchBtn) {
             clearSearchBtn.addEventListener('click', function(e) {
@@ -2319,7 +2222,6 @@ let previousSeatSnapshot = null; // 換座位前的備份
             });
         }
 
-        // 點擊模態框外部關閉
         document.getElementById('attendanceModal').addEventListener('click', function(e) {
             if (e.target === this) {
                 closeAttendanceModal();
@@ -2344,26 +2246,21 @@ let previousSeatSnapshot = null; // 換座位前的備份
             }
         });
 
-        // 清理無效的請假記錄（修復舊數據問題）
         function cleanInvalidRecords() {
             Object.keys(attendance).forEach(date => {
                 Object.keys(attendance[date]).forEach(studentName => {
                     const record = attendance[date][studentName];
-                    // 如果記錄狀態是 absent 但沒有 periods 或 periodsText，可能是舊數據
                     if (record.status === 'absent') {
-                        // 確保有 periods 和 periodsText（如果沒有，設為空）
                         if (!record.periods) {
                             record.periods = [];
                         }
                         if (!record.periodsText) {
                             record.periodsText = '';
                         }
-                        // 如果沒有 leaveTypeLabel，設為默認值
                         if (!record.leaveTypeLabel) {
                             record.leaveTypeLabel = '其他';
                         }
                     }
-                    // 檢查學生是否還存在
                     const studentExists = students.find(s => s.name === studentName);
                     if (!studentExists) {
                         delete attendance[date][studentName];
@@ -2373,18 +2270,14 @@ let previousSeatSnapshot = null; // 換座位前的備份
             saveAttendance();
         }
 
-        // 清理無效記錄（等待資料載入完成後執行）
         function initializeApp() {
             cleanInvalidRecords();
-            // 初始化渲染
             if (seatLayout.rows && seatLayout.cols) {
                 document.getElementById('rows').value = seatLayout.rows;
                 document.getElementById('cols').value = seatLayout.cols;
             }
-            // renderSeats() 和 updateStats() 會在 loadDataFromFirebase() 中呼叫
         }
         
-        // 等待資料載入完成
         const checkDataLoaded = setInterval(() => {
             if (dataLoaded) {
                 clearInterval(checkDataLoaded);
@@ -2392,22 +2285,18 @@ let previousSeatSnapshot = null; // 換座位前的備份
             }
         }, 100);
 
-        // ========== 縮放功能 ==========
         let currentZoom = 100;
         
-        // 初始化縮放控制（等待 DOM 載入完成）
         function initZoomControls() {
             const zoomSlider = document.getElementById('zoomSlider');
             const zoomValue = document.getElementById('zoomValue');
             const seatGridContainer = document.getElementById('seatGridContainer');
 
             if (!zoomSlider || !zoomValue || !seatGridContainer) {
-                // 如果元素還不存在，稍後再試
                 setTimeout(initZoomControls, 100);
                 return;
             }
 
-            // 從 localStorage 載入上次的縮放設定
             const savedZoom = localStorage.getItem('seatZoom');
             if (savedZoom) {
                 currentZoom = parseInt(savedZoom);
@@ -2416,17 +2305,14 @@ let previousSeatSnapshot = null; // 換座位前的備份
                 seatGridContainer.style.transform = `scale(${currentZoom / 100})`;
             }
 
-            // 監聽縮放滑桿變化
             zoomSlider.addEventListener('input', function(e) {
                 currentZoom = parseInt(e.target.value);
                 zoomValue.textContent = currentZoom + '%';
                 seatGridContainer.style.transform = `scale(${currentZoom / 100})`;
-                // 儲存縮放設定
                 localStorage.setItem('seatZoom', currentZoom);
             });
         }
 
-        // 重置縮放
         function resetZoom() {
             const zoomSlider = document.getElementById('zoomSlider');
             const zoomValue = document.getElementById('zoomValue');
@@ -2441,7 +2327,6 @@ let previousSeatSnapshot = null; // 換座位前的備份
             }
         }
 
-        // 適應螢幕（自動計算適合的縮放比例）
         function fitToScreen() {
             const seatGridContainer = document.getElementById('seatGridContainer');
             const grid = document.getElementById('seatGrid');
@@ -2450,25 +2335,21 @@ let previousSeatSnapshot = null; // 換座位前的備份
             
             if (!seatGridContainer || !grid || !seatLayout.rows || !seatLayout.cols) return;
 
-            // 計算座位表的實際大小
-            const seatWidth = 120; // 每個座位的寬度
-            const seatHeight = 100; // 每個座位的高度
-            const gap = 10; // 間距
-            const padding = 40; // 內邊距
+            const seatWidth = 120; 
+            const seatHeight = 100; 
+            const gap = 10; 
+            const padding = 40; 
             
             const gridWidth = (seatWidth + gap) * seatLayout.cols - gap + padding;
             const gridHeight = (seatHeight + gap) * seatLayout.rows - gap + padding;
             
-            // 取得視窗大小（減去一些邊距）
             const viewportWidth = window.innerWidth - 100;
             const viewportHeight = window.innerHeight - 300;
             
-            // 計算適合的縮放比例
             const scaleX = viewportWidth / gridWidth;
             const scaleY = viewportHeight / gridHeight;
-            const optimalScale = Math.min(scaleX, scaleY, 1) * 100; // 不超過 100%
+            const optimalScale = Math.min(scaleX, scaleY, 1) * 100; 
             
-            // 設定縮放（最小 30%，最大 100%）
             currentZoom = Math.max(30, Math.min(100, Math.floor(optimalScale / 5) * 5));
             
             if (zoomSlider && zoomValue) {
@@ -2479,11 +2360,9 @@ let previousSeatSnapshot = null; // 換座位前的備份
             localStorage.setItem('seatZoom', currentZoom);
         }
 
-        // 頁面載入完成後初始化縮放控制
         window.addEventListener('DOMContentLoaded', function() {
             setTimeout(initZoomControls, 500);
         });
-        // ========== 縮放功能結束 ==========
     
         function undoShuffle() {
             if (!previousSeatSnapshot) {
